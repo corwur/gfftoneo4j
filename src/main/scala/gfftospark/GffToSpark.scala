@@ -15,6 +15,7 @@ object GffToSpark extends GffToSpark {
     try {
       val lines: RDD[String] = sc.textFile(args(0)) //.sample(true, 0.05)
 
+      // Parse lines into a meaningful data structure (GffLine)
       val gffLines: RDD[GffLine] = lines.map { l =>
         Try {
           parseLine(l)
@@ -22,15 +23,37 @@ object GffToSpark extends GffToSpark {
           .get
       }
 
-      val results: Array[GffLine] = gffLines.collect()
+      // Filter out transcripts and other stuff
+        .filter(l => l.feature != "transcript" && l.feature != "similarity")
 
-      println(results.mkString("\n "))
-      println(s"Number of lines: ${results.length}")
+
+      // Group the data by gene
+      val linesPerGene = gffLines.groupBy(getKey)
+
+
+      // Scan over the lines to collect genes
+
+
+      val results: Array[(GeneId, Iterable[GffLine])] = linesPerGene.collect() //.take(2)
+
+      println(results.map {
+        case (geneId, lines) => s"GeneID: ${geneId}\n" + lines.map(_.toString).map("\t" + _).mkString("\n")
+      }.mkString("\n "))
+      println(s"Number of genes: ${results.length}")
     }
     finally {
       sc.stop()
     }
   }
+
+  def getKey(l: GffLine): GeneId =
+    (l.feature, l.attributes) match {
+      case ("gene", Left(geneId)) => geneId
+      case ("CDS" | "transcript" | "intron" | "start_codon" | "stop_codon", Right(attributes)) =>
+        attributes.getOrElse("gene_id", throw new IllegalArgumentException("Parse error: gene has attribute-pairs instead of gene name"))
+
+      case _ => throw new IllegalArgumentException(s"Parse error (${l.feature}, ${l.attributes}: gene has attribute-pairs instead of gene name")
+    }
 }
 
 /** The parsing and kmeans methods */
@@ -63,16 +86,16 @@ class GffToSpark extends Serializable {
 
   def parseAttributesMap(a: String): Map[String, String] =
     a.split(";")
-    .map(_.trim) // Remove spaces after the ;
-    .filter(_.nonEmpty) // Each attribute ends with a ;, so we remove the last empty one
-    .map(parseKeyValuePair)
-    .toMap
+      .map(_.trim) // Remove spaces after the ;
+      .filter(_.nonEmpty) // Each attribute ends with a ;, so we remove the last empty one
+      .map(parseKeyValuePair)
+      .toMap
 
   def parseKeyValuePair(kvp: String): (String, String) = {
     kvp.split(" ").toSeq match {
       case key +: tail =>
         val valueWithQuotes = tail.mkString(" ")
-//        println(s"Parsing key: ${key}, value: ${valueWithQuotes}")
+        //        println(s"Parsing key: ${key}, value: ${valueWithQuotes}")
         val value = valueWithQuotes.substring(1, valueWithQuotes.length - 1)
 
         (key, value)
