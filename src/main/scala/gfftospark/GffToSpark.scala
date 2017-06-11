@@ -23,16 +23,14 @@ object GffToSpark extends GffToSpark {
           .get
       }
 
-      // Filter out transcripts and other stuff
+      // Filter out transcripts and other stuff TODO find out what to do with this
         .filter(l => l.feature != "transcript" && l.feature != "similarity")
 
 
       // Group the data by gene
-      val linesPerGene = gffLines.groupBy(getKey)
+      val linesPerGene: RDD[(GeneId, Iterable[GffLine])] = gffLines.groupBy(getKey)
 
-
-      // Scan over the lines to collect genes
-
+      val genes = linesPerGene.map((toGene _).tupled)
 
       val results: Array[(GeneId, Iterable[GffLine])] = linesPerGene.collect() //.take(2)
 
@@ -54,6 +52,11 @@ object GffToSpark extends GffToSpark {
 
       case _ => throw new IllegalArgumentException(s"Parse error (${l.feature}, ${l.attributes}: gene has attribute-pairs instead of gene name")
     }
+
+  def toGene(geneId: GeneId, lines: Iterable[GffLine]): Gene = {
+    ???
+
+  }
 }
 
 /** The parsing and kmeans methods */
