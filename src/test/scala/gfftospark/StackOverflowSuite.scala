@@ -1,4 +1,4 @@
-package stackoverflow
+package gfftospark
 
 import org.scalatest.{FunSuite, BeforeAndAfterAll}
 import org.junit.runner.RunWith

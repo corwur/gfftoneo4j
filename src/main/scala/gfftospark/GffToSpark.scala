@@ -1,4 +1,4 @@
-package stackoverflow
+package gfftospark
 
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
@@ -38,9 +38,7 @@ object GffToSpark extends GffToSpark {
   /** Main function */
   def main(args: Array[String]): Unit = {
     try {
-
-
-      val lines: RDD[String] = sc.textFile("/Users/svr21640/projects/wageningen/corwur/f_poae_renamed.gff") //.sample(true, 0.05)
+      val lines: RDD[String] = sc.textFile(args(0)) //.sample(true, 0.05)
 
       val gffLines: RDD[GffToSpark.GffLine] = lines.map { l =>
         Try {
