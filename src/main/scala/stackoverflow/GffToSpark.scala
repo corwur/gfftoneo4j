@@ -107,11 +107,6 @@ class GffToSpark extends Serializable {
 
     val attributesFieldColumnIndex = 8
 
-    val attributePairs: Array[String] = fields(attributesFieldColumnIndex)
-      .split(";")
-      .map(_.trim) // Remove spaces after the ;
-      .filter(_.nonEmpty) // Each attribute ends with a ;, so we remove the last empty one
-
     GffLine(
       fields(0),
       fields(1),
@@ -121,9 +116,16 @@ class GffToSpark extends Serializable {
       0L, // TODO fields(5).toDouble,
       Strand.fromString(fields(6)),
       0L, // TODO fields(7).toLong,
-      attributePairs.map(parseKeyValuePair).toMap
+      parseAttributes(fields(attributesFieldColumnIndex))
     )
   }
+
+  def parseAttributes(a: String): Map[String, String] =
+    a.split(";")
+    .map(_.trim) // Remove spaces after the ;
+    .filter(_.nonEmpty) // Each attribute ends with a ;, so we remove the last empty one
+    .map(parseKeyValuePair)
+    .toMap
 
   def parseKeyValuePair(kvp: String): (String, String) = {
     kvp.split(" ").toSeq match {
