@@ -2,16 +2,16 @@ package gfftospark
 
 trait DnaThingy {
   val start: Long
-  val end: Long
+  val stop: Long
 }
 
 case class DnaSequence(genes: Seq[Gene])
 
-case class Gene(id: String, start: Long, end: Long, transcripts: Seq[Transcript]) extends DnaThingy
+case class Gene(id: String, start: Long, stop: Long, transcripts: Seq[Transcript]) extends DnaThingy
 
-case class CodingSequence(start: Long, end: Long) extends DnaThingy
+case class CodingSequence(start: Long, stop: Long) extends DnaThingy
 
-case class Intron(start: Long, end: Long) extends DnaThingy
+case class Intron(start: Long, stop: Long) extends DnaThingy
 
 sealed trait Transcript {
   val mRNA: Seq[CodingSequence]

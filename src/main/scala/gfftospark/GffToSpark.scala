@@ -54,6 +54,35 @@ object GffToSpark extends GffToSpark {
     }
 
   def toGene(geneId: GeneId, lines: Iterable[GffLine]): Gene = {
+    val codingSequences = lines.filter(_.feature == "CDS").map { line =>
+      CodingSequence(line.start, line.stop)
+    }
+
+    val introns = lines.filter(_.feature == "intron").map { line =>
+      Intron(line.start, line.stop)
+    }
+
+    val geneData = lines.find(_.feature == "gene")
+      .getOrElse(throw new IllegalArgumentException("Parse error: no gene data found"))
+
+    val dnaThingies: Iterable[DnaThingy] = (codingSequences ++ introns).toList
+        .sortBy(_.start)
+
+    val transcripts = lines.filter(_.feature == "transcript")
+      .map { line =>
+
+      }
+
+
+
+
+
+    Gene(geneId, geneData.start, geneData.stop, )
+
+
+
+
+
     ???
 
   }
