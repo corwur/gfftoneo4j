@@ -9,7 +9,7 @@ trait HasPositionOnDna {
   val stop: Long
 }
 
-trait TranscriptElement extends HasPositionOnDna
+sealed trait TranscriptElement extends HasPositionOnDna
 
 case class DnaSequence(genes: Seq[Gene])
 
