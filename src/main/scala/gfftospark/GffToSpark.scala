@@ -13,29 +13,30 @@ object GffToSpark extends GffToSpark {
   /** Main function */
   def main(args: Array[String]): Unit = {
     try {
-      val lines: RDD[String] = sc.textFile(args(0)) //.sample(true, 0.05)
+      val lines: RDD[String] = sc.textFile(args(0))
 
       // Parse lines into a meaningful data structure (GffLine)
       val gffLines: RDD[GffLine] = lines.map { l =>
         Try {
-          parseLine(l)
+          GffParser.parseLine(l)
         }.transform[GffLine](Success.apply, e => Failure(new IllegalArgumentException(s"Parsefout in regel '${l}'", e)))
           .get
       }
 
       // Filter out transcripts and other stuff TODO find out what to do with this
-        .filter(l => l.feature != "transcript" && l.feature != "similarity")
-
+        .filter(l => l.feature != "similarity")
 
       // Group the data by gene
       val linesPerGene: RDD[(GeneId, Iterable[GffLine])] = gffLines.groupBy(getKey)
 
+      // Convert the data into a Gene structure
       val genes = linesPerGene.map((toGene _).tupled)
 
-      val results: Array[(GeneId, Iterable[GffLine])] = linesPerGene.collect() //.take(2)
+      // Collect results
+      val results: Array[Gene] = genes.collect() //.take(2)
 
-      println(results.map {
-        case (geneId, lines) => s"GeneID: ${geneId}\n" + lines.map(_.toString).map("\t" + _).mkString("\n")
+      println(results.map { gene =>
+        s"Gene: ${gene.id}\n" + gene.transcripts.map(_.toString).map("\t" + _).mkString("\n")
       }.mkString("\n "))
       println(s"Number of genes: ${results.length}")
     }
@@ -47,6 +48,7 @@ object GffToSpark extends GffToSpark {
   def getKey(l: GffLine): GeneId =
     (l.feature, l.attributes) match {
       case ("gene", Left(geneId)) => geneId
+      case ("transcript", Left(transcriptId)) => transcriptId.split('.').head
       case ("CDS" | "transcript" | "intron" | "start_codon" | "stop_codon", Right(attributes)) =>
         attributes.getOrElse("gene_id", throw new IllegalArgumentException("Parse error: gene has attribute-pairs instead of gene name"))
 
@@ -54,87 +56,43 @@ object GffToSpark extends GffToSpark {
     }
 
   def toGene(geneId: GeneId, lines: Iterable[GffLine]): Gene = {
-    val codingSequences = lines.filter(_.feature == "CDS").map { line =>
-      CodingSequence(line.start, line.stop)
-    }
+    val codingSequences = lines
+      .filter(_.feature == "CDS")
+      .map(line => CodingSequence(line.start, line.stop))
+      .toSeq
 
-    val introns = lines.filter(_.feature == "intron").map { line =>
-      Intron(line.start, line.stop)
-    }
+    val introns = lines
+      .filter(_.feature == "intron")
+      .map(line => Intron(line.start, line.stop))
+      .toSeq
 
-    val geneData = lines.find(_.feature == "gene")
+    val geneData = lines
+      .find(_.feature == "gene")
       .getOrElse(throw new IllegalArgumentException("Parse error: no gene data found"))
 
-    val dnaThingies: Iterable[DnaThingy] = (codingSequences ++ introns).toList
-        .sortBy(_.start)
+    val transcripts = lines
+      .filter(_.feature == "transcript")
+      .map(line => toTranscript(line, codingSequences, introns))
+      .toSeq
 
-    val transcripts = lines.filter(_.feature == "transcript")
-      .map { line =>
+    Gene(geneId, geneData.start, geneData.stop, transcripts)
+  }
 
-      }
+  def toTranscript(line: GffLine, codingSequences: Seq[CodingSequence], introns: Seq[Intron]): Transcript = {
+    val children = (codingSequences ++ introns).sortBy(_.start)
 
+    val transcriptId = line.attributes match {
+      case Left(id) => id
+      case _ => throw new IllegalArgumentException("Parse error: unable to parse transcript ID")
+    }
 
-
-
-
-    Gene(geneId, geneData.start, geneData.stop, )
-
-
-
-
-
-    ???
-
+    Transcript(transcriptId, children)
   }
 }
 
 /** The parsing and kmeans methods */
 class GffToSpark extends Serializable {
-  // TODO: replace with parser combinator
-  def parseLine(line: String): GffLine = {
-    val fields = line.split("\t")
-    require(fields.length == 9)
 
-    val attributesFieldColumnIndex = 8
-    val attributesField = fields(attributesFieldColumnIndex)
-
-    // Try to parse a list of attributes (key value pairs) or if that fails, a single string
-    // NOTE: lines with genes and transcripts seem to have a single string with the gene ID / transcript ID
-    val attributes = Try(parseAttributesMap(attributesField)).map(Right(_))
-      .getOrElse(Left(attributesField))
-
-    GffLine(
-      fields(0),
-      fields(1),
-      fields(2),
-      fields(3).toLong,
-      fields(4).toLong,
-      0L, // TODO fields(5).toDouble,
-      Strand.fromString(fields(6)),
-      0L, // TODO fields(7).toLong,
-      attributes
-    )
-  }
-
-  def parseAttributesMap(a: String): Map[String, String] =
-    a.split(";")
-      .map(_.trim) // Remove spaces after the ;
-      .filter(_.nonEmpty) // Each attribute ends with a ;, so we remove the last empty one
-      .map(parseKeyValuePair)
-      .toMap
-
-  def parseKeyValuePair(kvp: String): (String, String) = {
-    kvp.split(" ").toSeq match {
-      case key +: tail =>
-        val valueWithQuotes = tail.mkString(" ")
-        //        println(s"Parsing key: ${key}, value: ${valueWithQuotes}")
-        val value = valueWithQuotes.substring(1, valueWithQuotes.length - 1)
-
-        (key, value)
-      case _ =>
-        throw new IllegalArgumentException("Ongeldig attribute: kvp")
-    }
-  }
 }
 
 

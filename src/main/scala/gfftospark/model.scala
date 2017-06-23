@@ -1,28 +1,26 @@
 package gfftospark
 
-trait DnaThingy {
+/**
+  * This file contains data structures (models) that represent the genetic data in a GFF file
+  */
+
+trait HasPositionOnDna {
   val start: Long
   val stop: Long
 }
 
+trait TranscriptElement extends HasPositionOnDna
+
 case class DnaSequence(genes: Seq[Gene])
 
-case class Gene(id: String, start: Long, stop: Long, transcripts: Seq[Transcript]) extends DnaThingy
+case class Gene(id: String, start: Long, stop: Long, transcripts: Seq[Transcript]) extends HasPositionOnDna
 
-case class CodingSequence(start: Long, stop: Long) extends DnaThingy
+case class CodingSequence(start: Long, stop: Long) extends TranscriptElement
 
-case class Intron(start: Long, stop: Long) extends DnaThingy
+case class Intron(start: Long, stop: Long) extends TranscriptElement
 
-sealed trait Transcript {
-  val mRNA: Seq[CodingSequence]
-}
-
-final case class TerminalCodingSequence(cds: CodingSequence) extends Transcript {
-  override val mRNA: Seq[CodingSequence] = Seq(cds)
-}
-
-final case class Cons(cds: CodingSequence, intron: Intron, tail: Transcript) extends Transcript {
-  override val mRNA: Seq[CodingSequence] = cds +: tail.mRNA
+case class Transcript(id: String, children: Seq[TranscriptElement]) {
+  val mRNA: Seq[CodingSequence] = children.collect { case cds @ CodingSequence(_, _) => cds }
 }
 
 sealed trait Strand extends Serializable
@@ -40,15 +38,3 @@ object Strand {
     }
   }
 }
-
-case class GffLine(
-                    seqname: String,
-                    source: String,
-                    feature: String,
-                    start: Long,
-                    stop: Long,
-                    score: Double,
-                    strand: Strand,
-                    frame: Long,
-                    attributes: Either[String, Map[String, String]] // Either a single string or list of attributes
-                  ) extends Serializable
