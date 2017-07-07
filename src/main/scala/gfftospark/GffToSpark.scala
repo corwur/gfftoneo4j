@@ -82,30 +82,43 @@ object GffToSpark {
       geneNode.setProperty("geneID", gene.id)
 
       // mRNA
-      val codingSequences: Seq[CodingSequence] = gene.transcripts.head.mRNA
+      val geneElementNodes = gene.transcripts.head.children.map { element =>
 
-      val cdsNodes: List[Node] = codingSequences.map { cds =>
-//        println(s"Creating node for ${cds}")
-        val node = db.createNode(Label.label("CDS"))
-        node.setProperty("start", cds.start)
-        node.setProperty("end", cds.stop)
+        val label = element match {
+          case CodingSequence(_, _) => "CDS"
+          case Intron(_, _) => "intron"
+        }
+
+        val node = db.createNode(Label.label(label))
+
+        node.setProperty("start", element.start)
+        node.setProperty("end", element.stop)
         node.setProperty("geneID", gene.id)
 
-        node
-      }.toList
+        (element, node)
+      }
 
-      // Create relations between the nodes
-      if (cdsNodes.nonEmpty) {
-        val cdsNodePairs = cdsNodes.zip(cdsNodes.tail)
-        cdsNodePairs.foreach { case (nodeA, nodeB) =>
-          //        println(s"Creating relationship between for ${nodeA} and ${nodeB}")
-          nodeA.createRelationshipTo(nodeB, GffRelationshipTypes.mRna)
-        }
-      } // TODO what does it mean if they are empty?
+      val cdsNodes = geneElementNodes.collect { case (CodingSequence(_, _), node) => node }
+
+      createPairs(cdsNodes).foreach { case (nodeA, nodeB) =>
+        //        println(s"Creating relationship between for ${nodeA} and ${nodeB}")
+        nodeA.createRelationshipTo(nodeB, GffRelationshipTypes.mRna)
+      }
+      // TODO what does it mean if they are empty?
+
+      // LINKS relationship
+
+      createPairs(geneElementNodes.map(_._2)).foreach { case (nodeA, nodeB) =>
+        nodeA.createRelationshipTo(nodeB, GffRelationshipTypes.links)
+      }
     }
   }
+
+  def createPairs[T](elements: Seq[T]): Seq[(T, T)] =
+    if (elements.nonEmpty) elements.zip(elements.tail) else Seq.empty
 }
 
 object GffRelationshipTypes {
   val mRna = RelationshipType.withName("mRNA")
+  val links = RelationshipType.withName("mRNA")
 }
