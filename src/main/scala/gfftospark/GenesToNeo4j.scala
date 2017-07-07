@@ -6,7 +6,7 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory
 import org.neo4j.graphdb.{GraphDatabaseService, Label, Node, RelationshipType}
 
 object GenesToNeo4j {
-  def insertInNeo4j(results: Array[Gene]) = {
+  def insertInNeo4j(results: Array[Gene]): Unit = {
     // TODO can we connect to a server as well..?
     val databasePath: File = new File("mijndb.db")
     val db = new GraphDatabaseFactory().newEmbeddedDatabase(databasePath)
@@ -35,14 +35,14 @@ object GenesToNeo4j {
       geneNode.setProperty("end", gene.stop)
       geneNode.setProperty("geneID", gene.id)
 
-      gene.transcripts.foreach(insertTranscript(_, geneNode, gene, db))
+      gene.splicings.foreach(insertTranscript(_, geneNode, gene, db))
 
       geneNode
     }
 
-  def insertTranscript(transcript: Transcript, geneNode: Node, gene: Gene, db: GraphDatabaseService) = {
+  def insertTranscript(transcript: Splicing, geneNode: Node, gene: Gene, db: GraphDatabaseService): Unit = {
     // Create transcript node
-    val transcriptNode = db.createNode(Label.label("transcript"))
+    val transcriptNode = db.createNode(Label.label("splicing"))
 
     transcriptNode.setProperty("start", transcript.start)
     transcriptNode.setProperty("end", transcript.stop)
@@ -51,10 +51,10 @@ object GenesToNeo4j {
     // Link gene to transcripts
     transcriptNode.createRelationshipTo(geneNode, GffRelationshipTypes.transcribes)
 
-    // Create nodes for CDS and introns. They are already in order
+    // Create nodes for exons and introns. They are already in order
     val geneElementNodes = transcript.children.map { element =>
       val label = element match {
-        case CodingSequence(_, _) => "CDS"
+        case Exon(_, _) => "cds" // TODO should it be exon?
         case Intron(_, _) => "intron"
       }
 
@@ -67,23 +67,23 @@ object GenesToNeo4j {
       (element, node)
     }
 
-    // CDSs and introns are linked
+    // Exons and introns are linked
     createOrderedRelationships(geneElementNodes.map(_._2), GffRelationshipTypes.links)
 
-    // Link CDS's as mRNA
-    val cdsNodes = geneElementNodes.collect { case (CodingSequence(_, _), node) => node }
+    // Link exons as mRNA
+    val exonNodes = geneElementNodes.collect { case (Exon(_, _), node) => node }
     val intronNodes = geneElementNodes.collect { case (Intron(_, _), node) => node }
 
-    createOrderedRelationships(cdsNodes, GffRelationshipTypes.mRna)
+    createOrderedRelationships(exonNodes, GffRelationshipTypes.mRna)
 
-    // CDSs code a transcript
-    cdsNodes.foreach(_.createRelationshipTo(transcriptNode, GffRelationshipTypes.codes))
+    // Exons code a transcript
+    exonNodes.foreach(_.createRelationshipTo(transcriptNode, GffRelationshipTypes.codes))
 
     // Introns are 'in' a transcript
     intronNodes.foreach(_.createRelationshipTo(transcriptNode, GffRelationshipTypes.in))
   }
 
-  def createOrderedRelationships(elements: Seq[Node], relType: RelationshipType) =
+  def createOrderedRelationships(elements: Seq[Node], relType: RelationshipType): Unit =
     createPairs(elements).foreach { case (nodeA, nodeB) =>
       nodeA.createRelationshipTo(nodeB, relType)
     }
