@@ -5,7 +5,7 @@ package gfftospark
   */
 object AlsoGeneReader {
 
-  val GENE = "gene_id"
+  val GENE = "gene"
   val EXON = "CDS"
   val INTRON = "intron"
   val START_CODON = "start_codon"
