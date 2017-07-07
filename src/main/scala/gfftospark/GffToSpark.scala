@@ -1,9 +1,13 @@
 package gfftospark
 
+import java.io.File
+
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
+import org.neo4j.graphdb.factory.GraphDatabaseFactory
 
 import scala.util.{Failure, Success, Try}
+import org.neo4j.unsafe.batchinsert.{BatchInserter, BatchInserters}
 
 object GffToSpark {
 
@@ -47,5 +51,23 @@ object GffToSpark {
     }
   }
 
+  def insertGeneToNeo4J(gene: Gene): Unit = {
+    val databasePath: File = ???
+    val db = new GraphDatabaseFactory().newEmbeddedDatabase(databasePath)
+
+    db.createNode()
+
+    GraphDatabaseFactory().newEmbeddedDatabase( DB_PATH );
+    registerShutdownHook( graphDb );
+
+    val storeDirectory: File = ???
+    val inserter = BatchInserters.inserter(storeDirectory)
+
+    val geneNode = inserter.createNode()
+
+
+
+
+  }
 }
 
