@@ -99,23 +99,21 @@ object GffToSpark {
       }
 
       val cdsNodes = geneElementNodes.collect { case (CodingSequence(_, _), node) => node }
-
-      createPairs(cdsNodes).foreach { case (nodeA, nodeB) =>
-        //        println(s"Creating relationship between for ${nodeA} and ${nodeB}")
-        nodeA.createRelationshipTo(nodeB, GffRelationshipTypes.mRna)
-      }
-      // TODO what does it mean if they are empty?
+      createOrderedRelationships(cdsNodes, GffRelationshipTypes.mRna)
 
       // LINKS relationship
-
-      createPairs(geneElementNodes.map(_._2)).foreach { case (nodeA, nodeB) =>
-        nodeA.createRelationshipTo(nodeB, GffRelationshipTypes.links)
-      }
+      createOrderedRelationships(geneElementNodes.map(_._2), GffRelationshipTypes.links)
     }
   }
 
+  def createOrderedRelationships(elements: Seq[Node], relType: RelationshipType) =
+    createPairs(elements).foreach { case (nodeA, nodeB) =>
+      nodeA.createRelationshipTo(nodeB, relType)
+    }
+
   def createPairs[T](elements: Seq[T]): Seq[(T, T)] =
     if (elements.nonEmpty) elements.zip(elements.tail) else Seq.empty
+    // TODO what does it mean if they are empty?
 }
 
 object GffRelationshipTypes {
