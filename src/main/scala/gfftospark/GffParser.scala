@@ -10,6 +10,8 @@ object GffParser extends JavaTokenParsers {
 
   val attributeKeyValueSeparator = ";"
 
+  def header = phrase("#" ~> ".*".r) map (Header(_))
+
   def notDoubleQuoteRegex = "[^\"]*".r
 
   def oneOrMoreNonWhitespaceRegex = "[^\\s]+".r
@@ -103,8 +105,11 @@ object GffParser extends JavaTokenParsers {
                 attributes)
     }
 
-  def parseLine(s: String): GffLine =
-    parseAll(line, s).getOrElse(throw new IllegalArgumentException)
+  def parseLineOrHeader(s: String): GffLineOrHeader =
+    parseAll(lineOrHeader, s).getOrElse(throw new IllegalArgumentException)
+
+  def lineOrHeader: Parser[GffLineOrHeader] =
+    line | header
 }
 
 object App {
@@ -128,11 +133,15 @@ object App {
 
     val lines = toParse.split("\n") map (_.trim) filter (_.nonEmpty)
 
-    lines map GffParser.parseLine foreach println
+    lines map GffParser.parseLineOrHeader foreach println
   }
 }
 
-case class GffLine(
+sealed trait GffLineOrHeader
+
+final case class Header(value: String) extends GffLineOrHeader
+
+final case class GffLine(
                     seqname: String,
                     source: String,
                     feature: String,
@@ -142,5 +151,5 @@ case class GffLine(
                     strand: Option[Strand],
                     frame: Option[Long],
                     attributes: Either[String, Map[String, String]] // Either a single string or list of attributes
-                  ) extends Serializable
+                  ) extends Serializable with GffLineOrHeader
 

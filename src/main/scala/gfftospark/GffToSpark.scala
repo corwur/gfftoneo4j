@@ -17,14 +17,17 @@ object GffToSpark {
       val lines: RDD[String] = sc.textFile(args(0))
 
       // Parse lines into a meaningful data structure (GffLine)
-      val gffLines: RDD[GffLine] = lines.map { l =>
-        Try {
-          GffParser.parseLine(l)
-        }.transform[GffLine](Success.apply, e => Failure(new IllegalArgumentException(s"Parsefout in regel '${l}'", e)))
-          .get
-      }
-
-      // Filter out not used stuff TODO find out what to do with this
+      val gffLines: RDD[GffLine] = lines
+        .map { l =>
+          Try {
+            GffParser.parseLineOrHeader(l)
+          }.transform[GffLineOrHeader](Success.apply, e => Failure(new IllegalArgumentException(s"Parsefout in regel '${l}'", e)))
+            .get
+        }
+        .collect {
+          case l@GffLine(_, _, _, _, _, _, _, _, _) => l
+        }
+        // Filter out not used stuff TODO find out what to do with this
         .filter(l => l.feature != "similarity")
 
       // Group the data by gene

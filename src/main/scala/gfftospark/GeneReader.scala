@@ -21,7 +21,7 @@ object GeneReader {
   def getGeneId(line: GffLine): GeneId = {
     (line.feature, line.attributes) match {
       case (GENE, Left(geneId)) => geneId
-      case (SPLICING, Left(transcriptId)) => transcriptId.split('.').head
+      case (SPLICING, Left(splicingId)) => splicingId.split('.').head
       case (EXON | SPLICING | INTRON | START_CODON | STOP_CODON, Right(attributes)) =>
         attributes.getOrElse(GENE_ID_KEY, throw new IllegalArgumentException("Parse error: gene has attribute-pairs instead of gene name"))
 
@@ -57,7 +57,7 @@ object GeneReader {
 
     val splicingId = line.attributes match {
       case Left(id) => id
-      case _ => throw new IllegalArgumentException("Parse error: unable to parse transcript ID")
+      case _ => throw new IllegalArgumentException("Parse error: unable to parse splicing ID")
     }
 
     Splicing(splicingId, children)
