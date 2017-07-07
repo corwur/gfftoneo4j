@@ -19,7 +19,7 @@ case class CodingSequence(start: Long, stop: Long) extends TranscriptElement
 
 case class Intron(start: Long, stop: Long) extends TranscriptElement
 
-case class Transcript(id: String, children: Seq[TranscriptElement]) {
+case class Transcript(id: String, start: Long, stop: Long, children: Seq[TranscriptElement]) extends HasPositionOnDna {
   val mRNA: Seq[CodingSequence] = children.collect { case cds @ CodingSequence(_, _) => cds }
 }
 

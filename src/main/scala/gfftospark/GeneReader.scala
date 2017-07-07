@@ -52,7 +52,7 @@ object GeneReader {
       case _ => throw new IllegalArgumentException("Parse error: unable to parse transcript ID")
     }
 
-    Transcript(transcriptId, children)
+    Transcript(transcriptId, line.start, line.stop, children)
   }
 
 
