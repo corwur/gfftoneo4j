@@ -24,7 +24,7 @@ object GeneReader {
   def linesToGene(geneId: GeneId, lines: Iterable[GffLine]): Gene = {
     val codingSequences = lines
       .filter(_.feature == "CDS")
-      .map(line => CodingSequence(line.start, line.stop))
+      .map(line => Exon(line.start, line.stop))
       .toSeq
 
     val introns = lines
@@ -44,7 +44,7 @@ object GeneReader {
     Gene(geneId, geneData.start, geneData.stop, transcripts)
   }
 
-  def toTranscript(line: GffLine, codingSequences: Seq[CodingSequence], introns: Seq[Intron]): Transcript = {
+  def toTranscript(line: GffLine, codingSequences: Seq[Exon], introns: Seq[Intron]): Splicing = {
     val children = (codingSequences ++ introns).sortBy(_.start)
 
     val transcriptId = line.attributes match {
@@ -52,7 +52,7 @@ object GeneReader {
       case _ => throw new IllegalArgumentException("Parse error: unable to parse transcript ID")
     }
 
-    Transcript(transcriptId, children)
+    Splicing(transcriptId, children)
   }
 
 

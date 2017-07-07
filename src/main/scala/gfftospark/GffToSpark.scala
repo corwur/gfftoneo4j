@@ -37,7 +37,7 @@ object GffToSpark {
       val results: Array[Gene] = genes.collect() //.take(2)
 
       println(results.map { gene =>
-        s"Gene: ${gene.id}\n" + gene.transcripts.map(_.toString).map("\t" + _).mkString("\n")
+        s"Gene: ${gene.id}\n" + gene.splicings.map(_.toString).map("\t" + _).mkString("\n")
       }.mkString("\n "))
 
       println(s"Number of genes: ${results.length}")
