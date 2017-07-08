@@ -105,8 +105,12 @@ object GffParser extends JavaTokenParsers {
                 attributes)
     }
 
-  def parseLineOrHeader(s: String): GffLineOrHeader =
-    parseAll(lineOrHeader, s).getOrElse(throw new IllegalArgumentException)
+  def parseLineOrHeader(s: String): Either[String, GffLineOrHeader] =
+    parseAll(lineOrHeader, s) match {
+      case Success(result, _) => Right(result)
+      case Failure(msg, _) =>  Left(msg)
+      case Error(msg, _) =>  Left(msg)
+    }
 
   def lineOrHeader: Parser[GffLineOrHeader] =
     line | header
