@@ -129,6 +129,7 @@ object App {
         |X	Ensembl	Pred.trans.	2416676	2418760	450.19	-	2	genscan=GENSCAN00000019335
         |X	Ensembl	Variation	2413425	2413425	.	+	.
         |X	Ensembl	Variation	2413805	2413805	.	+	.
+        |NC_026474.1	RefSeq	tRNA	571898	572014	.	+	.	ID=rna231;Parent=gene231;Dbxref=GeneID:23560927;gbkey=tRNA;product=tRNA-Gly
         |NC_026474.1	RefSeq	region	1	11697295	.	+	.	ID=id0;Dbxref=taxon:229533;Name=1;chromosome=1;gb-synonym=Gibberella zeae PH-1;gbkey=Src;genome=chromosome;mol_type=genomic DNA;old-name=Gibberella zeae PH-1;strain=PH-1%3B NRRL 31084
         """.stripMargin
 

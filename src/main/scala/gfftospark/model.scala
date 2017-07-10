@@ -9,18 +9,20 @@ trait HasPositionOnDna {
   val stop: Long
 }
 
-sealed trait TranscriptElement extends HasPositionOnDna
+sealed trait TranscriptElement extends HasPositionOnDna {
+  def gffLine: GffLine
+}
 
 case class DnaSequence(genes: Seq[Gene])
 
 case class Gene(id: String, start: Long, stop: Long, splicings: Seq[Splicing]) extends HasPositionOnDna
 
-case class Exon(start: Long, stop: Long) extends TranscriptElement
+case class Exon(start: Long, stop: Long, gffLine: GffLine) extends TranscriptElement
 
-case class Intron(start: Long, stop: Long) extends TranscriptElement
+case class Intron(start: Long, stop: Long, gffLine: GffLine) extends TranscriptElement
 
 case class Splicing(id: String, children: Seq[TranscriptElement]) {
-  val mRNA: Seq[Exon] = children.collect { case cds @ Exon(_, _) => cds }
+  val mRNA: Seq[Exon] = children.collect { case cds @ Exon(_, _, _) => cds }
 }
 
 sealed trait Strand extends Serializable

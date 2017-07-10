@@ -10,3 +10,5 @@ resolvers += Resolver.sonatypeRepo("releases")
 libraryDependencies += "junit" % "junit" % "4.10" % "test"
 libraryDependencies += "org.apache.spark" %% "spark-core" % "2.1.0"
 libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.6"
+libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.1"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % "test"

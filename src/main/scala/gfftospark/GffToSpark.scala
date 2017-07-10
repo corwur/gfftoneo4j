@@ -25,25 +25,23 @@ object GffToSpark {
             .get
         }
         .collect {
+          // Discard headers:
           case l@GffLine(_, _, _, _, _, _, _, _, _) => l
         }
-        // Filter out not used stuff TODO find out what to do with this
-        .filter(l => l.feature != "similarity")
 
-      // Group the data by gene
-      val linesPerGene: RDD[(GeneId, Iterable[GffLine])] = gffLines.groupBy(GeneReader.getGeneId)
+//    val gffLineTreeNodeWriters = FPoaeGeneReader.getGenes(gffLines, FPoaeGeneReader.toGffLines(gffLines)).collect()
+      val gffLineTreeNodeWriters = GcfGeneReader.getGenes(gffLines, GcfGeneReader.toGffLines(gffLines)).collect()
 
-      // Convert the data into a Gene structure
-      val genes: RDD[Gene] = linesPerGene.map((GeneReader.linesToGene _).tupled)
+      val genes = gffLineTreeNodeWriters.flatMap { gffLineTreeNodeWriter =>
+        gffLineTreeNodeWriter.value.map(_.domainObject).toSeq
+      }
 
       // Collect results
-      val results: Array[Gene] = genes.collect() //.take(2)
-
-      println(results.map { gene =>
+      println(genes.map { gene =>
         s"Gene: ${gene.id}\n" + gene.splicings.map(_.toString).map("\t" + _).mkString("\n")
       }.mkString("\n "))
 
-      println(s"Number of genes: ${results.length}")
+      println(s"Number of genes: ${genes.length}")
     }
     finally {
       sc.stop()
