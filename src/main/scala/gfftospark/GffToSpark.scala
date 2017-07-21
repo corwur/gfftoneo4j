@@ -26,19 +26,20 @@ object GffToSpark {
             .get
         }
         .collect {
+          // Discard headers:
           case l@GffLine(_, _, _, _, _, _, _, _, _) => l
         }
-        // Filter out not used stuff TODO find out what to do with this
-        .filter(l => l.feature != "similarity")
 
-      // Group the data by gene
-      val linesPerGene: RDD[(GeneId, Iterable[GffLine])] = gffLines.groupBy(GeneReader.getGeneId)
+//    val gffLineTreeNodeWriters = FPoaeGeneReader.getGenes(gffLines, FPoaeGeneReader.toGffLines(gffLines)).collect()
+      val gffLineTreeNodeWriters = GcfGeneReader.getGenes(gffLines, GcfGeneReader.toGffLines(gffLines)).collect()
 
-      // Convert the data into a Gene structure
-      val genes: RDD[Gene] = linesPerGene.map((GeneReader.linesToGene _).tupled)
+      val genes = gffLineTreeNodeWriters.flatMap { gffLineTreeNodeWriter =>
+        gffLineTreeNodeWriter.value.map(_.domainObject).toSeq
+      }
 
-      // Collect results
-      val results: Array[Gene] = genes.sortBy(_.start).collect() //.take(100) // Uncomment for testing
+      println(s"Number of genes: ${genes.length}")
+
+      val results: Array[Gene] = genes.sortBy(_.start) //.take(100) // Uncomment for testing
 
       println(results.map { gene =>
         s"Gene: ${gene.id}\n" + gene.splicings.map(_.toString).map("\t" + _).mkString("\n")
@@ -47,6 +48,7 @@ object GffToSpark {
       GenesToNeo4j.insertInNeo4j(results)
 
       println(s"Number of genes: ${results.length}")
+
     }
     finally {
       sc.stop()
