@@ -1,7 +1,8 @@
 package gfftospark
 
-import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
+import org.apache.spark.{SparkConf, SparkContext}
+import org.neo4j.graphdb.RelationshipType
 
 import scala.util.{Failure, Success, Try}
 
@@ -37,11 +38,13 @@ object GffToSpark {
       val genes: RDD[Gene] = linesPerGene.map((GeneReader.linesToGene _).tupled)
 
       // Collect results
-      val results: Array[Gene] = genes.collect() //.take(2)
+      val results: Array[Gene] = genes.sortBy(_.start).collect() //.take(100) // Uncomment for testing
 
       println(results.map { gene =>
         s"Gene: ${gene.id}\n" + gene.splicings.map(_.toString).map("\t" + _).mkString("\n")
       }.mkString("\n "))
+
+      GenesToNeo4j.insertInNeo4j(results)
 
       println(s"Number of genes: ${results.length}")
     }
@@ -49,6 +52,13 @@ object GffToSpark {
       sc.stop()
     }
   }
-
 }
 
+object GffRelationshipTypes {
+  val codes = RelationshipType.withName("codes")
+  val in = RelationshipType.withName("in")
+  val mRna = RelationshipType.withName("mRNA")
+  val links = RelationshipType.withName("links")
+  val transcribes = RelationshipType.withName("transcribes")
+  val order = RelationshipType.withName("order")
+}

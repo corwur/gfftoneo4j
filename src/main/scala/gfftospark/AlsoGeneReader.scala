@@ -60,8 +60,6 @@ object AlsoGeneReader {
       case _ => throw new IllegalArgumentException("Parse error: unable to parse splicing ID")
     }
 
-    Splicing(splicingId, children)
+    Splicing(splicingId, line.start, line.stop, children)
   }
-
-
 }
