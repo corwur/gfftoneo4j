@@ -105,7 +105,7 @@ trait GeneReader {
       (parentInfo: ParentInfoFound, exonTreeNodes: Iterable[GffLineTreeNode[Exon]]) => {
         val exons = exonTreeNodes.map(_.domainObject).toSeq
         val exonGffLines = exonTreeNodes.map(_.gffLine).toSeq
-        val splicing = Splicing(parentInfo.parentId, exons)
+        val splicing = Splicing(parentInfo.parentId, parentInfo.parent.start, parentInfo.parent.stop, exons)
         GffLineTreeNode(parentInfo.parent, splicing, exonGffLines)
       },
       gffLinesAlt)

@@ -1,7 +1,8 @@
 package gfftospark
 
-import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
+import org.apache.spark.{SparkConf, SparkContext}
+import org.neo4j.graphdb.RelationshipType
 
 import scala.util.{Failure, Success, Try}
 
@@ -36,17 +37,30 @@ object GffToSpark {
         gffLineTreeNodeWriter.value.map(_.domainObject).toSeq
       }
 
-      // Collect results
-      println(genes.map { gene =>
+      println(s"Number of genes: ${genes.length}")
+
+      val results: Array[Gene] = genes.sortBy(_.start) //.take(100) // Uncomment for testing
+
+      println(results.map { gene =>
         s"Gene: ${gene.id}\n" + gene.splicings.map(_.toString).map("\t" + _).mkString("\n")
       }.mkString("\n "))
 
-      println(s"Number of genes: ${genes.length}")
+      GenesToNeo4j.insertInNeo4j(results)
+
+      println(s"Number of genes: ${results.length}")
+
     }
     finally {
       sc.stop()
     }
   }
-
 }
 
+object GffRelationshipTypes {
+  val codes = RelationshipType.withName("codes")
+  val in = RelationshipType.withName("in")
+  val mRna = RelationshipType.withName("mRNA")
+  val links = RelationshipType.withName("links")
+  val transcribes = RelationshipType.withName("transcribes")
+  val order = RelationshipType.withName("order")
+}

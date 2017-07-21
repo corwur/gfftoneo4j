@@ -21,7 +21,7 @@ case class Exon(start: Long, stop: Long, gffLine: GffLine) extends TranscriptEle
 
 case class Intron(start: Long, stop: Long, gffLine: GffLine) extends TranscriptElement
 
-case class Splicing(id: String, children: Seq[TranscriptElement]) {
+case class Splicing(id: String, start: Long, stop: Long, children: Seq[TranscriptElement]) {
   val mRNA: Seq[Exon] = children.collect { case cds @ Exon(_, _, _) => cds }
 }
 
