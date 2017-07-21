@@ -61,7 +61,7 @@ trait GeneReader {
     gffLines
       .filter(isExon)
       .map(gffLine => {
-        GffLineTreeNode(gffLine, Exon(gffLine.start, gffLine.stop, gffLine), Seq.empty)
+        GffLineTreeNode(gffLine, Exon(gffLine.start, gffLine.stop), Seq.empty)
       })
       .map(Some(_))
       .map(Writer(_))

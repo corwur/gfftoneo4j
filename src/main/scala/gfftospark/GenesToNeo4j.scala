@@ -54,8 +54,8 @@ object GenesToNeo4j {
     // Create nodes for exons and introns. They are already in order
     val geneElementNodes = transcript.children.map { element =>
       val label = element match {
-        case Exon(_, _, _) => "cds" // TODO should it be exon?
-        case Intron(_, _, _) => "intron"
+        case Exon(_, _) => "cds" // TODO should it be exon?
+        case Intron(_, _) => "intron"
       }
 
       val node = db.createNode(Label.label(label))
@@ -71,8 +71,8 @@ object GenesToNeo4j {
     createOrderedRelationships(geneElementNodes.map(_._2), GffRelationshipTypes.links)
 
     // Link exons as mRNA
-    val exonNodes = geneElementNodes.collect { case (Exon(_, _, _), node) => node }
-    val intronNodes = geneElementNodes.collect { case (Intron(_, _, _), node) => node }
+    val exonNodes = geneElementNodes.collect { case (Exon(_, _), node) => node }
+    val intronNodes = geneElementNodes.collect { case (Intron(_, _), node) => node }
 
     createOrderedRelationships(exonNodes, GffRelationshipTypes.mRna)
 
