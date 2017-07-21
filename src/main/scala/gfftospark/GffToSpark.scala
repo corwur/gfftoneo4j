@@ -8,7 +8,10 @@ import scala.util.{Failure, Success, Try}
 
 object GffToSpark {
 
-  @transient lazy val conf: SparkConf = new SparkConf().setMaster("local").setAppName("GffToSpark")
+  @transient lazy val conf: SparkConf = new SparkConf()
+    .setMaster("local")
+    .setAppName("GffToSpark")
+    .set("fs.file.impl", classOf[org.apache.hadoop.fs.LocalFileSystem].getName)
   @transient lazy val sc: SparkContext = new SparkContext(conf)
 
   /** Main function */
