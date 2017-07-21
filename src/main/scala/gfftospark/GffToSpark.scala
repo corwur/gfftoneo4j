@@ -16,6 +16,8 @@ object GffToSpark {
     try {
       // Read lines
       val lines: RDD[String] = sc.textFile(args(0))
+      val reader = GeneReaders.geneReadersById.get(args(1)).getOrElse(throw new IllegalArgumentException("No such rader found"))
+      val dbPath = args(2)
 
       // Parse lines into a meaningful data structure (GffLine)
       val gffLines: RDD[GffLine] = lines
@@ -30,22 +32,15 @@ object GffToSpark {
           case l@GffLine(_, _, _, _, _, _, _, _, _) => l
         }
 
-//    val gffLineTreeNodeWriters = FPoaeGeneReader.getGenes(gffLines, FPoaeGeneReader.toGffLines(gffLines)).collect()
-      val gffLineTreeNodeWriters = GcfGeneReader.getGenes(gffLines, GcfGeneReader.toGffLines(gffLines)).collect()
-
-      val genes = gffLineTreeNodeWriters.flatMap { gffLineTreeNodeWriter =>
-        gffLineTreeNodeWriter.value.map(_.domainObject).toSeq
-      }
-
+      val genes = reader(gffLines)
       println(s"Number of genes: ${genes.length}")
 
       val results: Array[Gene] = genes.sortBy(_.start) //.take(100) // Uncomment for testing
-
       println(results.map { gene =>
         s"Gene: ${gene.id}\n" + gene.splicings.map(_.toString).map("\t" + _).mkString("\n")
       }.mkString("\n "))
 
-      GenesToNeo4j.insertInNeo4j(results)
+      GenesToNeo4j.insertInNeo4j(results, dbPath)
 
       println(s"Number of genes: ${results.length}")
 

@@ -237,3 +237,26 @@ object FPoaeGeneReader extends GeneReader with Serializable {
         attributes.get(parentIdKey)
     }
 }
+
+object GeneReaders {
+  val geneReadersById: Map[String, RDD[GffLine] => Array[Gene]] = Map(
+    "gcf" -> (gffLines => {
+      val gffLineTreeNodeWriters = GcfGeneReader.getGenes(gffLines, GcfGeneReader.toGffLines(gffLines)).collect()
+
+        val genes = gffLineTreeNodeWriters.flatMap { gffLineTreeNodeWriter =>
+          gffLineTreeNodeWriter.value.map(_.domainObject).toSeq
+        }
+
+      genes
+    }),
+    "fpoae" -> (gffLines => {
+      val gffLineTreeNodeWriters = FPoaeGeneReader.getGenes(gffLines, FPoaeGeneReader.toGffLines(gffLines)).collect()
+
+      val genes = gffLineTreeNodeWriters.flatMap { gffLineTreeNodeWriter =>
+        gffLineTreeNodeWriter.value.map(_.domainObject).toSeq
+      }
+
+      genes
+    })
+  )
+}

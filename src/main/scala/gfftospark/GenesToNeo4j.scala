@@ -6,9 +6,9 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory
 import org.neo4j.graphdb.{GraphDatabaseService, Label, Node, RelationshipType}
 
 object GenesToNeo4j {
-  def insertInNeo4j(results: Array[Gene]): Unit = {
+  def insertInNeo4j(results: Array[Gene], dbPath: String): Unit = {
     // TODO can we connect to a server as well..?
-    val databasePath: File = new File("mijndb.db")
+    val databasePath: File = new File(dbPath)
     val db = new GraphDatabaseFactory().newEmbeddedDatabase(databasePath)
 
     val geneNodes = results.map(insertGeneToNeo4J(db, _))
