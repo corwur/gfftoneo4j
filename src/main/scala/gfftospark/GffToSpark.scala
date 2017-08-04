@@ -18,9 +18,9 @@ object GffToSpark {
   def main(args: Array[String]): Unit = {
     try {
       // Read lines
-      val lines: RDD[String] = sc.textFile(args(0))
-      val reader = GeneReaders.geneReadersById.get(args(1)).getOrElse(throw new IllegalArgumentException("No such rader found"))
-      val dbPath = args(2)
+      val lines: RDD[String] = sc.textFile(args(0)) // .sample(false, 0.25)
+      val reader = GeneReaders.geneReadersById.getOrElse(args(1), throw new IllegalArgumentException("No such rader found"))
+      val dbUrl = args(2)
 
       // Parse lines into a meaningful data structure (GffLine)
       val gffLines: RDD[GffLine] = lines
@@ -38,12 +38,12 @@ object GffToSpark {
       val genes = reader(gffLines)
       println(s"Number of genes: ${genes.length}")
 
-      val results: Array[Gene] = genes.sortBy(_.start) //.take(100) // Uncomment for testing
+      val results: Array[Gene] = genes.sortBy(_.start).take(100) // Uncomment for testing
       println(results.map { gene =>
         s"Gene: ${gene.id}\n" + gene.splicings.map(_.toString).map("\t" + _).mkString("\n")
       }.mkString("\n "))
 
-      GenesToNeo4j.insertInNeo4j(results, dbPath)
+      GenesToNeo4j.insertInNeo4j(results, dbUrl)
 
       println(s"Number of genes: ${results.length}")
 
