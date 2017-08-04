@@ -17,8 +17,8 @@ object GenesToNeo4j {
 
 
     // Link genes in order
-    val geneNodeIds = inTransaction(session) { implicit tx =>
-      results.map(insertGeneToNeo4J)
+    inTransaction(session) { implicit tx =>
+      val geneNodeIds = results.map(insertGeneToNeo4J)
       createOrderedRelationships(geneNodeIds, GffRelationshipTypes.order)
     }
 
