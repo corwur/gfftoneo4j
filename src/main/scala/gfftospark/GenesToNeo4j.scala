@@ -34,6 +34,9 @@ object GenesToNeo4j {
       geneNode.setProperty("start", gene.start)
       geneNode.setProperty("end", gene.stop)
       geneNode.setProperty("geneID", gene.id)
+      gene.attributes.foreach {
+        case (key, value) => geneNode.setProperty(key + "_attribute", value)
+      }
 
       gene.splicings.foreach(insertTranscript(_, geneNode, gene, db))
 
@@ -47,6 +50,9 @@ object GenesToNeo4j {
     transcriptNode.setProperty("start", transcript.start)
     transcriptNode.setProperty("end", transcript.stop)
     transcriptNode.setProperty("geneID", gene.id)
+    transcript.attributes.foreach {
+      case (key, value) => transcriptNode.setProperty(key + "_attribute", value)
+    }
 
     // Link gene to transcripts
     transcriptNode.createRelationshipTo(geneNode, GffRelationshipTypes.transcribes)
@@ -54,7 +60,7 @@ object GenesToNeo4j {
     // Create nodes for exons and introns. They are already in order
     val geneElementNodes = transcript.children.map { element =>
       val label = element match {
-        case Exon(_, _) => "cds" // TODO should it be exon?
+        case Exon(_, _, _) => "cds" // TODO should it be exon?
         case Intron(_, _) => "intron"
       }
 
@@ -63,6 +69,9 @@ object GenesToNeo4j {
       node.setProperty("start", element.start)
       node.setProperty("end", element.stop)
       node.setProperty("geneID", gene.id)
+      element.attributes.foreach {
+        case (key, value) => node.setProperty(key + "_attribute", value)
+      }
 
       (element, node)
     }
@@ -71,7 +80,7 @@ object GenesToNeo4j {
     createOrderedRelationships(geneElementNodes.map(_._2), GffRelationshipTypes.links)
 
     // Link exons as mRNA
-    val exonNodes = geneElementNodes.collect { case (Exon(_, _), node) => node }
+    val exonNodes = geneElementNodes.collect { case (Exon(_, _, _), node) => node }
     val intronNodes = geneElementNodes.collect { case (Intron(_, _), node) => node }
 
     createOrderedRelationships(exonNodes, GffRelationshipTypes.mRna)

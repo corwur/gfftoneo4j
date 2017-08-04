@@ -153,5 +153,12 @@ final case class GffLine(
                     strand: Option[Strand],
                     frame: Option[Long],
                     attributes: Either[String, Map[String, String]] // Either a single string or list of attributes
-                  ) extends Serializable with GffLineOrHeader
+                  ) extends Serializable with GffLineOrHeader {
+  def attributesAsMap: Map[String, String] = {
+    attributes match {
+      case Left(singleAttribute) => Map("attr" -> singleAttribute)
+      case Right(allAttributes) => allAttributes
+    }
+  }
+}
 
