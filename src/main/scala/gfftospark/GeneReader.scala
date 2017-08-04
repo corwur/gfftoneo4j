@@ -143,8 +143,9 @@ object GcfGeneReader extends GeneReader with Serializable {
 
   override def isExon(gffLine: GffLine): Boolean = gffLine.feature == EXON
 
-  override def getParentSplicing(gffLineTreeNode: GffLineTreeNode[Exon], gffLinesRepository: GffLinesRepository) =
+  override def getParentSplicing(gffLineTreeNode: GffLineTreeNode[Exon], gffLinesRepository: GffLinesRepository) = {
     getParentInfo(gffLineTreeNode.gffLine, SPLICING, gffLinesRepository)
+  }
 
   override def getParentGene(gffLineTreeNode: GffLineTreeNode[Splicing], gffLinesRepository: GffLinesRepository) =
     getParentInfo(gffLineTreeNode.gffLine, Seq(GENE), gffLinesRepository)
@@ -245,6 +246,7 @@ object GeneReaders {
       val gffLineTreeNodeWriters = GcfGeneReader.getGenes(gffLines, GcfGeneReader.toGffLines(gffLines)).collect()
 
         val genes = gffLineTreeNodeWriters.flatMap { gffLineTreeNodeWriter =>
+          gffLineTreeNodeWriter.logs.foreach(println)
           gffLineTreeNodeWriter.value.map(_.domainObject).toSeq
         }
 
