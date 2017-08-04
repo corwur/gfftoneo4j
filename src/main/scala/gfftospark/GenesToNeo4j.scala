@@ -36,10 +36,10 @@ object GenesToNeo4j {
       .mkString(", ")
 
     val query = s"CREATE (n:$label { $props }) RETURN id(n)"
-    println(query)
+//    println(query)
 
     val javaParams = mapAsJavaMap[String, Object](properties)
-    println(javaParams)
+//    println(javaParams)
     val result = tx.run(new Statement(query, javaParams))
     result.single().get(0).asLong()
   }
@@ -47,7 +47,7 @@ object GenesToNeo4j {
   // TODO use a Scala Neo4J wrapper for nicer neo4j syntax
   def insertGeneToNeo4J(gene: Gene)(implicit tx: Transaction): Long = {
 
-    println("Creating gene node for gene " + gene.id)
+//    println("Creating gene node for gene " + gene.id)
     val geneNodeId = createNode("gene", Map(
       "start" -> gene.start.toString,
       "end" -> gene.stop.toString,
@@ -106,7 +106,7 @@ object GenesToNeo4j {
 
   def createOrderedRelationships(nodeIds: Seq[NodeId], relType: RelationshipType)(implicit tx: Transaction): Unit =
     createPairs(nodeIds).foreach { case (nodeIdA, nodeIdB) =>
-      println(s"Creating relationship between node $nodeIdA and $nodeIdB")
+//      println(s"Creating relationship between node $nodeIdA and $nodeIdB")
       createRelationship(nodeIdA, nodeIdB, relType)
     }
 
