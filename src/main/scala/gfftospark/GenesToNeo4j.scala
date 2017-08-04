@@ -32,12 +32,15 @@ object GenesToNeo4j {
 
   def createNode(label: String, properties: Map[String, String])(implicit tx: Transaction): NodeId = {
     val props = properties.keys
-      .map(key => s"$key: '{$key}'")
+      .map(key => s"$key: {$key}")
       .mkString(", ")
 
     val query = s"CREATE (n:$label { $props }) RETURN id(n)"
+    println(query)
 
-    val result = tx.run(query, mapAsJavaMap[String, Object](properties))
+    val javaParams = mapAsJavaMap[String, Object](properties)
+    println(javaParams)
+    val result = tx.run(new Statement(query, javaParams))
     result.single().get(0).asLong()
   }
 
@@ -58,7 +61,7 @@ object GenesToNeo4j {
     geneNodeId
   }
 
-  def insertTranscript(transcript: Splicing, geneNodeId: Any, gene: Gene)(implicit tx: Transaction): Unit = {
+  def insertTranscript(transcript: Splicing, geneNodeId: NodeId, gene: Gene)(implicit tx: Transaction): Unit = {
     // Create transcript node
     val transcriptNode = createNode("splicing", properties = Map(
       "start" -> transcript.start.toString,
@@ -67,7 +70,7 @@ object GenesToNeo4j {
     ))
 
     // Link gene to transcripts
-    //    transcriptNode.createRelationshipTo(geneNode, GffRelationshipTypes.transcribes)
+    createRelationship(transcriptNode, geneNodeId, GffRelationshipTypes.transcribes)
 
     // Create nodes for exons and introns. They are already in order
     val geneElementNodes = transcript.children.map { element =>
@@ -86,30 +89,34 @@ object GenesToNeo4j {
     }
 
     // Exons and introns are linked
-    //    createOrderedRelationships(geneElementNodes.map(_._2), GffRelationshipTypes.links)
-    //
-    //    // Link exons as mRNA
-    //    val exonNodes = geneElementNodes.collect { case (Exon(_, _), node) => node }
-    //    val intronNodes = geneElementNodes.collect { case (Intron(_, _), node) => node }
-    //
-    //    createOrderedRelationships(exonNodes, GffRelationshipTypes.mRna)
-    //
-    //    // Exons code a transcript
-    //    exonNodes.foreach(_.createRelationshipTo(transcriptNode, GffRelationshipTypes.codes))
-    //
-    //    // Introns are 'in' a transcript
-    //    intronNodes.foreach(_.createRelationshipTo(transcriptNode, GffRelationshipTypes.in))
+    createOrderedRelationships(geneElementNodes.map(_._2), GffRelationshipTypes.links)
+
+    // Link exons as mRNA
+    val exonNodes = geneElementNodes.collect { case (Exon(_, _), node) => node }
+    val intronNodes = geneElementNodes.collect { case (Intron(_, _), node) => node }
+
+    createOrderedRelationships(exonNodes, GffRelationshipTypes.mRna)
+
+    // Exons code a transcript
+    exonNodes.foreach(createRelationship(_, transcriptNode, GffRelationshipTypes.codes))
+
+    // Introns are 'in' a transcript
+    intronNodes.foreach(createRelationship(_, transcriptNode, GffRelationshipTypes.in))
   }
 
-  def createOrderedRelationships(nodeIds: Seq[Long], relType: RelationshipType)(implicit tx: Transaction): Unit =
+  def createOrderedRelationships(nodeIds: Seq[NodeId], relType: RelationshipType)(implicit tx: Transaction): Unit =
     createPairs(nodeIds).foreach { case (nodeIdA, nodeIdB) =>
       println(s"Creating relationship between node $nodeIdA and $nodeIdB")
-      val query = s"MATCH (a),(b) WHERE id(a) = ${nodeIdA} AND id(b) = ${nodeIdB} create unique (a)-[r:${relType.name}]->(b) RETURN r"
-      // TODO why doesn't it work with parameters?
-//      val params = Map("idA" -> nodeIdA.toString, "idB" -> nodeIdB.toString)
-//      val result = tx.run(query, mapAsJavaMap[String, Object](params))
-      tx.run(query)
+      createRelationship(nodeIdA, nodeIdB, relType)
     }
+
+  def createRelationship(nodeA: NodeId, nodeB: NodeId, relType: RelationshipType)(implicit tx: Transaction): Unit = {
+    val query = s"MATCH (a),(b) WHERE id(a) = ${nodeA} AND id(b) = ${nodeB} create unique (a)-[r:${relType.name}]->(b) RETURN r"
+    // TODO why doesn't it work with parameters?
+    //      val params = Map("idA" -> nodeIdA.toString, "idB" -> nodeIdB.toString)
+    //      val result = tx.run(query, mapAsJavaMap[String, Object](params))
+    tx.run(query)
+  }
 
   def createPairs[T](elements: Seq[T]): Seq[(T, T)] =
   // TODO what does it mean if they are empty?
