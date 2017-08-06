@@ -11,7 +11,8 @@ object FeatureIdReader {
     * Use the single attribute value as the feature ID
     */
   def singleAttribute: FeatureIdReader = {
-    case l: GffLine => l.attributes.left.toOption
+    case l: GffLine =>
+      l.attributes.left.toOption
     case _ => None
   }
 
@@ -46,7 +47,7 @@ object FeatureIdReader {
   def byFeatureType(readers: PartialFunction[FeatureType, FeatureIdReader]): FeatureIdReader = {
     case l: GffLine =>
       for {
-        reader <- readers.lift.apply(l.feature.toLowerCase)
+        reader <- readers.lift.apply(l.feature)
         id <- reader(l)
       } yield id
   }

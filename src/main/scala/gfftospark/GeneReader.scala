@@ -1,10 +1,12 @@
 package gfftospark
+
 import FeatureIdReader._
 
 /**
   * Functions for reading Gene objects and their Transcripts from a series of GFFLines
   */
 trait GeneReader {
+
   def isExon(gffLine: GffLine): Boolean
 
   val getId: FeatureIdReader
@@ -171,7 +173,10 @@ object GcfGeneReader extends GeneReader with Serializable {
   }
 
   def getParentId(line: GffLine): Option[String] =
-    line.getAttribute(PARENT_ID_KEY)
+    line.attributes match {
+      case Left(_) => None
+      case Right(attributes) => attributes.find(_._1 == PARENT_ID_KEY).map(_._2)
+    }
 }
 
 object FPoaeGeneReader extends GeneReader with Serializable {
@@ -215,13 +220,15 @@ object FPoaeGeneReader extends GeneReader with Serializable {
     }
   }
 
-  override val getId = byFeatureType {
-    case GENE => singleAttribute
-    case SPLICING => attributeWithKey(SPLICING_ID_KEY)
-  }
+  // Both genes and transcripts have their ID as single attribute
+  override val getId = singleAttribute
 
   def getParentId(line: GffLine, parentIdKey: String): Option[String] =
-    line.getAttribute(parentIdKey)
+    line.attributes match {
+      case Left(_) => None
+      case Right(attributes) =>
+        attributes.get(parentIdKey)
+    }
 }
 
 object GeneReaders {
