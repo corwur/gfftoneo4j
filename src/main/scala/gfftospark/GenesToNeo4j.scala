@@ -4,32 +4,32 @@ import gfftospark.Neo4JUtils._
 import org.neo4j.driver.v1._
 
 object GenesToNeo4j {
-  def insertInNeo4j(sequences: Seq[DnaSequence], dbPath: String): Unit = {
+  def insertSequences(sequences: Seq[DnaSequence], dbPath: String): Unit =
+    withSession(dbPath, "neo4j", "test") { implicit session =>
+      sequences.foreach(insertSequence)
+    }
 
-    sequences.foreach { sequence =>
-      println(s"Processing sequence ${sequence.name} with nr of genes ${sequence.genes.size}")
+  private def insertSequence(sequence: DnaSequence)(implicit session: Session) = {
+    println(s"Processing sequence ${sequence.name} with nr of genes ${sequence.genes.size}")
 
-      withSession(dbPath, "neo4j", "test") { session =>
-        val genesWithNodeId = inTransaction(session) { implicit tx =>
-          sequence.genes.zipWithIndex.map { case (gene, index) =>
-            println(s"Creating node for gene ${index} of ${sequence.genes.size}")
-            val geneNodeId = insertGeneToNeo4J(gene, sequence.name)
-            (gene, geneNodeId)
-          }
-        }
-
-        println("Creating relationships between genes")
-        inTransaction(session) { implicit tx =>
-          // Link genes in order
-          val sortedGenesWithNodeId = genesWithNodeId.sortBy(_._1.start)
-          val nodeIds = sortedGenesWithNodeId.map(_._2)
-          createOrderedRelationships(nodeIds, GffRelationshipTypes.order)
-        }
+    val genesWithNodeId = inTransaction(session) { implicit tx =>
+      sequence.genes.zipWithIndex.map { case (gene, index) =>
+        println(s"Creating node for gene ${index} of ${sequence.genes.size}")
+        val geneNodeId = insertGene(gene, sequence.name)
+        (gene, geneNodeId)
       }
+    }
+
+    println("Creating relationships between genes")
+    inTransaction(session) { implicit tx =>
+      // Link genes in order
+      val sortedGenesWithNodeId = genesWithNodeId.sortBy(_._1.start)
+      val nodeIds = sortedGenesWithNodeId.map(_._2)
+      createOrderedRelationships(nodeIds, GffRelationshipTypes.order)
     }
   }
 
-  def insertGeneToNeo4J(gene: Gene, sequenceName: String)(implicit tx: Transaction): Long = {
+  def insertGene(gene: Gene, sequenceName: String)(implicit tx: Transaction): NodeId = {
     val geneNodeId = createNode("gene", Map(
       "sequence" -> sequenceName,
       "start" -> gene.start.toString,
@@ -55,7 +55,7 @@ object GenesToNeo4j {
     createRelationship(transcriptNode, geneNodeId, GffRelationshipTypes.transcribes)
 
     // Create nodes for exons and introns. They are already in order
-    val geneElementNodes = transcript.children.map { element =>
+    val transcriptElementNodes = transcript.children.map { element =>
       val label = element match {
         case Exon(_, _) => "cds" // TODO should it be exon?
         case Intron(_, _) => "intron"
@@ -71,11 +71,11 @@ object GenesToNeo4j {
     }
 
     // Exons and introns are linked
-    createOrderedRelationships(geneElementNodes.map(_._2), GffRelationshipTypes.links)
+    createOrderedRelationships(transcriptElementNodes.map(_._2), GffRelationshipTypes.links)
 
     // Link exons as mRNA
-    val exonNodes = geneElementNodes.collect { case (Exon(_, _), node) => node }
-    val intronNodes = geneElementNodes.collect { case (Intron(_, _), node) => node }
+    val exonNodes = transcriptElementNodes.collect { case (Exon(_, _), node) => node }
+    val intronNodes = transcriptElementNodes.collect { case (Intron(_, _), node) => node }
 
     createOrderedRelationships(exonNodes, GffRelationshipTypes.mRna)
 

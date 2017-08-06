@@ -46,7 +46,7 @@ object GffToSpark {
       }
 
       // Insert in database
-      GenesToNeo4j.insertInNeo4j(sequences.collect(), dbUrl)
+      GenesToNeo4j.insertSequences(sequences.collect(), dbUrl)
 
       val nrGenes = sequences.map(_.genes.size).collect().sum
       println("Number of genes processed: " + nrGenes)
