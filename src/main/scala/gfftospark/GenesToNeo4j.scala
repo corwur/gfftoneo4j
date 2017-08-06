@@ -4,32 +4,34 @@ import gfftospark.Neo4JUtils._
 import org.neo4j.driver.v1._
 
 object GenesToNeo4j {
-  // DNA sequence
-  def insertInNeo4j(genes: Array[Gene], dbPath: String): Unit = {
-    withSession(dbPath, "neo4j", "test") { session =>
-      val genesWithNodeId = inTransaction(session) { implicit tx =>
-        genes.zipWithIndex.map { case (gene, index) =>
-          println(s"Creating node for gene ${index} of ${genes.size}")
-          val geneNodeId = insertGeneToNeo4J(gene)
-          (gene, geneNodeId)
-        }
-      }
+  def insertInNeo4j(sequences: Seq[DnaSequence], dbPath: String): Unit = {
 
-      println("Creating relationships between genes")
-      inTransaction(session) { implicit tx =>
-        // Link genes in order
-        val sortedGenesWithNodeId = genesWithNodeId.sortBy(_._1.start)
-        val nodeIds = sortedGenesWithNodeId.map(_._2)
-        createOrderedRelationships(nodeIds, GffRelationshipTypes.order)
+    sequences.foreach { sequence =>
+      println(s"Processing sequence ${sequence.name} with nr of genes ${sequence.genes.size}")
+
+      withSession(dbPath, "neo4j", "test") { session =>
+        val genesWithNodeId = inTransaction(session) { implicit tx =>
+          sequence.genes.zipWithIndex.map { case (gene, index) =>
+            println(s"Creating node for gene ${index} of ${sequence.genes.size}")
+            val geneNodeId = insertGeneToNeo4J(gene, sequence.name)
+            (gene, geneNodeId)
+          }
+        }
+
+        println("Creating relationships between genes")
+        inTransaction(session) { implicit tx =>
+          // Link genes in order
+          val sortedGenesWithNodeId = genesWithNodeId.sortBy(_._1.start)
+          val nodeIds = sortedGenesWithNodeId.map(_._2)
+          createOrderedRelationships(nodeIds, GffRelationshipTypes.order)
+        }
       }
     }
   }
 
-  def insertGeneToNeo4J(gene: Gene)(implicit tx: Transaction): Long = {
-
-    println("Creating gene node for gene " + gene.id)
+  def insertGeneToNeo4J(gene: Gene, sequenceName: String)(implicit tx: Transaction): Long = {
     val geneNodeId = createNode("gene", Map(
-      "sequence" -> gene.sequenceName,
+      "sequence" -> sequenceName,
       "start" -> gene.start.toString,
       "end" -> gene.stop.toString,
       "geneID" -> gene.id

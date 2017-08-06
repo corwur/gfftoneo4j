@@ -23,27 +23,33 @@ object GffToSpark {
       val dbUrl = args(2)
 
       // Parse lines into a meaningful data structure (GffLine)
-      val gffLines: RDD[GffLine] = lines
+      val gffLines: RDD[GffLineOrHeader] = lines
         .map { l =>
           Try {
             GffParser.parseLineOrHeader(l)
           }.transform[GffLineOrHeader](Success.apply, e => Failure(new IllegalArgumentException(s"Parsefout in regel '${l}'", e)))
             .get
         }
-        .collect {
-          // Discard headers:
-          case l@GffLine(_, _, _, _, _, _, _, _, _) => l
+
+      // Discard headers and group by sequence
+      val linesPerSequence = gffLines
+        .flatMap {
+          case g@GffLine(_, _, _, _, _, _, _, _, _) => Seq(g)
+          case _ => Seq.empty
         }
+        .groupBy { case GffLine(seqname, _, _, _, _, _, _, _, _) => seqname }
 
-      val genes = reader(gffLines)
-      println(s"Number of genes: ${genes.length}")
+      val sequences = linesPerSequence.map { case (sequenceName, lines) =>
+        val genes = reader(lines)
 
-      val genesRdd = sc.makeRDD(genes)
-
-      genesRdd.groupBy(_.sequenceName).foreach { case (sequenceName, genes) =>
-        println(s"Processing sequence $sequenceName. Nr of genes: ${genes.size}")
-        GenesToNeo4j.insertInNeo4j(genes.toArray, dbUrl)
+        DnaSequence(sequenceName, genes)
       }
+
+      // Insert in database
+      GenesToNeo4j.insertInNeo4j(sequences.collect(), dbUrl)
+
+      val nrGenes = sequences.map(_.genes.size).collect().sum
+      println("Number of genes processed: " + nrGenes)
     }
     finally {
       sc.stop()

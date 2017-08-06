@@ -11,7 +11,7 @@ trait HasPositionOnDna {
 
 sealed trait TranscriptElement extends HasPositionOnDna
 
-case class DnaSequence(genes: Seq[Gene])
+case class DnaSequence(name: String, genes: Seq[Gene])
 
 case class Gene(sequenceName: String, id: String, start: Long, stop: Long, splicings: Seq[Splicing]) extends HasPositionOnDna
 
