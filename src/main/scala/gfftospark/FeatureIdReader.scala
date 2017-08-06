@@ -19,7 +19,7 @@ object FeatureIdReader {
     * Use the attribute with the given key as the feature ID
     */
   def attributeWithKey(key: AttributeKey): FeatureIdReader =
-    attributesFromList(Seq(key))
+    attributesFromList(key)
 
   /**
     * Try to find attributes with a key contained in 'featureKeys'
@@ -27,7 +27,7 @@ object FeatureIdReader {
     * @param featureKeys Attribute keys to consider for the feature ID
     * @return
     */
-  def attributesFromList(featureKeys: Seq[AttributeKey]): FeatureIdReader = {
+  def attributesFromList(featureKeys: AttributeKey*): FeatureIdReader = {
     case l: GffLine =>
       for {
         attributes <- l.attributes.right.toOption
