@@ -41,4 +41,8 @@ jobs:
       # run tests!
       - run: cat /dev/null | sbt test:test
 
-      - assemble: cat /dev/null | sbt assembly
+      # Build a JAR
+      - run: cat /dev/null | sbt assembly
+      - store_artifacts: 
+        path: target/scala-2.11
+        destination: artifacts
