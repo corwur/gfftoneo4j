@@ -153,5 +153,8 @@ final case class GffLine(
                     strand: Option[Strand],
                     frame: Option[Long],
                     attributes: Either[String, Map[String, String]] // Either a single string or list of attributes
-                  ) extends Serializable with GffLineOrHeader
+                  ) extends Serializable with GffLineOrHeader {
+  def getAttribute(key: String): Option[String] =
+    attributes.right.toOption.flatMap(_.get(key))
+}
 

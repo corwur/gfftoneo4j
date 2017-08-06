@@ -171,10 +171,7 @@ object GcfGeneReader extends GeneReader with Serializable {
   }
 
   def getParentId(line: GffLine): Option[String] =
-    line.attributes match {
-      case Left(_) => None
-      case Right(attributes) => attributes.find(_._1 == PARENT_ID_KEY).map(_._2)
-    }
+    line.getAttribute(PARENT_ID_KEY)
 }
 
 object FPoaeGeneReader extends GeneReader with Serializable {
@@ -224,11 +221,7 @@ object FPoaeGeneReader extends GeneReader with Serializable {
   }
 
   def getParentId(line: GffLine, parentIdKey: String): Option[String] =
-    line.attributes match {
-      case Left(_) => None
-      case Right(attributes) =>
-        attributes.get(parentIdKey)
-    }
+    line.getAttribute(parentIdKey)
 }
 
 object GeneReaders {
