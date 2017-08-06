@@ -29,11 +29,11 @@ object GenesToNeo4j {
 
     println("Creating gene node for gene " + gene.id)
     val geneNodeId = createNode("gene", Map(
+      "sequence" -> gene.sequenceName,
       "start" -> gene.start.toString,
       "end" -> gene.stop.toString,
       "geneID" -> gene.id
     ))
-    // TODO sequence
     // TODO organism property
 
     gene.splicings.foreach(insertTranscript(_, geneNodeId, gene))

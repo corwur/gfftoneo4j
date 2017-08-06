@@ -13,7 +13,7 @@ sealed trait TranscriptElement extends HasPositionOnDna
 
 case class DnaSequence(genes: Seq[Gene])
 
-case class Gene(id: String, start: Long, stop: Long, splicings: Seq[Splicing]) extends HasPositionOnDna
+case class Gene(sequenceName: String, id: String, start: Long, stop: Long, splicings: Seq[Splicing]) extends HasPositionOnDna
 
 case class Exon(start: Long, stop: Long) extends TranscriptElement
 

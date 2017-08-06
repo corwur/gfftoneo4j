@@ -38,15 +38,12 @@ object GffToSpark {
       val genes = reader(gffLines)
       println(s"Number of genes: ${genes.length}")
 
-      val results: Array[Gene] = genes.sortBy(_.start).take(100) // Uncomment for testing
-      println(results.map { gene =>
-        s"Gene: ${gene.id}\n" + gene.splicings.map(_.toString).map("\t" + _).mkString("\n")
-      }.mkString("\n "))
+      val genesRdd = sc.makeRDD(genes)
 
-      GenesToNeo4j.insertInNeo4j(results, dbUrl)
-
-      println(s"Number of genes: ${results.length}")
-
+      genesRdd.groupBy(_.sequenceName).foreach { case (sequenceName, genes) =>
+        println(s"Processing sequence $sequenceName. Nr of genes: ${genes.size}")
+        GenesToNeo4j.insertInNeo4j(genes.toArray, dbUrl)
+      }
     }
     finally {
       sc.stop()

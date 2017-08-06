@@ -119,6 +119,7 @@ trait GeneReader {
         val splicings = splicingTreeNodes.map(_.domainObject).toSeq
         val splicingGffLines = splicingTreeNodes.map(_.gffLine).toSeq
         val gene = Gene(
+          parentInfo.parent.seqname,
           parentInfo.parentId,
           parentInfo.parent.start,
           parentInfo.parent.stop,
