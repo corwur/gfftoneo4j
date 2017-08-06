@@ -44,5 +44,5 @@ jobs:
       # Build a JAR
       - run: cat /dev/null | sbt assembly
       - store_artifacts: 
-        path: target/scala-2.11
-        destination: artifacts
+            path: target/scala-2.11
+            destination: artifacts
