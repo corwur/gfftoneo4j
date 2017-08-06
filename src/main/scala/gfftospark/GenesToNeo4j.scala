@@ -6,31 +6,30 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory
 import org.neo4j.graphdb.{GraphDatabaseService, Label, Node, RelationshipType}
 
 object GenesToNeo4j {
-  def insertInNeo4j(results: Array[Gene], dbPath: String): Unit = {
-    // TODO can we connect to a server as well..?
+  def insertInNeo4j(sequences: Seq[DnaSequence], dbPath: String): Unit = {
     val databasePath: File = new File(dbPath)
     val db = new GraphDatabaseFactory().newEmbeddedDatabase(databasePath)
 
-    val geneNodes = results.map(insertGeneToNeo4J(db, _))
+    sequences.foreach { sequence =>
+      println(s"Processing sequence ${sequence.name} with nr of genes ${sequence.genes.size}")
+      val geneNodes = sequence.genes.map(insertGeneToNeo4J(db, _, sequence.name))
 
-    // Link genes in order
-    inTransaction(db) {
-      createOrderedRelationships(geneNodes, GffRelationshipTypes.order)
+      // Link genes in order
+      inTransaction(db) {
+        createOrderedRelationships(geneNodes, GffRelationshipTypes.order)
+      }
     }
-
-    // TODO shutdown hook..?
-    //    new sun.misc.JavaLangAccess().registerShutdownHook()..registerShutdownHook(db)
 
     db.shutdown()
   }
 
   // TODO use a Scala Neo4J wrapper for nicer neo4j syntax
-  def insertGeneToNeo4J(db: GraphDatabaseService, gene: Gene): Node =
+  def insertGeneToNeo4J(db: GraphDatabaseService, gene: Gene, sequenceName: String): Node =
     inTransaction(db) {
       val geneNode = db.createNode(Label.label("gene"))
       println("Creating gene node for gene " + gene.id)
-      // TODO sequence
       // TODO organism property
+      geneNode.setProperty("sequence", sequenceName)
       geneNode.setProperty("start", gene.start)
       geneNode.setProperty("end", gene.stop)
       geneNode.setProperty("geneID", gene.id)
