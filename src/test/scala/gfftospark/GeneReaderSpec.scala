@@ -39,6 +39,8 @@ class GeneReaderSpec extends UnitSpec with LoneElement {
       gene.id shouldBe "FPOA_00002"
 
       gene.splicings.loneElement.mRNA.size shouldBe 3
+      // TODO why are there no exons being read..?
+      gene.splicings.loneElement.children.size shouldBe 5
     }
 
     genes.size shouldBe 2

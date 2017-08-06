@@ -46,3 +46,5 @@ jobs:
       - store_artifacts: 
             path: target/scala-2.11
             destination: artifacts
+      - store_test_results:
+            path: target/test-reports
