@@ -7,19 +7,23 @@ import org.neo4j.graphdb.RelationshipType
 import scala.collection.JavaConversions._
 
 object GenesToNeo4j {
+  // DNA sequence
   def insertInNeo4j(genes: Array[Gene], dbPath: String): Unit = {
     withSession(dbPath, "neo4j", "test") { session =>
-      val geneNodeIds = inTransaction(session) { implicit tx =>
+      val genesWithNodeId = inTransaction(session) { implicit tx =>
         genes.zipWithIndex.map { case (gene, index) =>
           println(s"Creating node for gene ${index} of ${genes.size}")
-          insertGeneToNeo4J(gene)
+          val geneNodeId = insertGeneToNeo4J(gene)
+          (gene, geneNodeId)
         }
       }
 
       println("Creating relationships between genes")
       inTransaction(session) { implicit tx =>
         // Link genes in order
-        createOrderedRelationships(geneNodeIds, GffRelationshipTypes.order)
+        val sortedGenesWithNodeId = genesWithNodeId.sortBy(_._1.start)
+        val nodeIds = sortedGenesWithNodeId.map(_._2)
+        createOrderedRelationships(nodeIds, GffRelationshipTypes.order)
       }
     }
   }
