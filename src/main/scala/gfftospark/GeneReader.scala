@@ -257,4 +257,6 @@ object GeneReaders {
       genes.toArray
     })
   )
+
+  val formats = geneReadersById.keys
 }

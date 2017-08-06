@@ -3,8 +3,11 @@ package gfftospark
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 import org.neo4j.graphdb.RelationshipType
+import scopt.OptionParser
 
 import scala.util.{Failure, Success, Try}
+
+case class CommandLineParams(file: String, format: String = "fpoae", neo4jUrl: String = "bolt://127.0.0.1:7687", neo4jUsername: String = "neo4j", neo4jPassword: String = "test")
 
 object GffToSpark {
 
@@ -16,11 +19,18 @@ object GffToSpark {
 
   /** Main function */
   def main(args: Array[String]): Unit = {
+    commandLineParser.parse(args, CommandLineParams("")) match {
+      case Some(config) => importGff(config)
+      case None => // command line arguments are bad, error message will have been displayed
+    }
+  }
+
+  private def importGff(params: CommandLineParams) = {
     try {
       // Read lines
-      val lines: RDD[String] = sc.textFile(args(0))
-      val reader = GeneReaders.geneReadersById.get(args(1)).getOrElse(throw new IllegalArgumentException("No such rader found"))
-      val dbPath = args(2)
+      val lines: RDD[String] = sc.textFile(params.file)
+      val reader = GeneReaders.geneReadersById.get(params.format).getOrElse(throw new IllegalArgumentException("No such rader found"))
+      val dbPath = params.neo4jUrl
 
       // Parse lines into a meaningful data structure (GffLine)
       val gffLines: RDD[GffLineOrHeader] = lines
@@ -54,6 +64,27 @@ object GffToSpark {
     finally {
       sc.stop()
     }
+  }
+
+  val commandLineParser = new OptionParser[CommandLineParams]("gfftoneo4j") {
+    head("gfftoneo4j", "0.1")
+
+    opt[String]('f', "file")
+      .required()
+      .valueName("<file>")
+      .action((x, c) => c.copy(file = x))
+      .text("Path to GFF file")
+
+    opt[String]('t', "type")
+      .required()
+      .valueName("<type>")
+      .action((x, c) => c.copy(format = x))
+      .text(s"GFF file type. Possible values: ${GeneReaders.formats.mkString(",")}")
+
+    opt[String]('u', "url")
+      .valueName("<url>")
+      .action((x, c) => c.copy(neo4jUrl = x))
+      .text("Neo4J server URL")
   }
 }
 
