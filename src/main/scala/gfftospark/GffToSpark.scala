@@ -25,9 +25,8 @@ object GffToSpark {
       // Parse lines into a meaningful data structure (GffLine)
       val gffLines: RDD[GffLineOrHeader] = lines
         .map { l =>
-          Try {
             GffParser.parseLineOrHeader(l)
-          }.transform[GffLineOrHeader](Success.apply, e => Failure(new IllegalArgumentException(s"Parsefout in regel '${l}'", e)))
+          .fold(msg => Failure(new IllegalArgumentException(s"Parsefout in regel '${l}': $msg")), Success.apply)
             .get
         }
 
