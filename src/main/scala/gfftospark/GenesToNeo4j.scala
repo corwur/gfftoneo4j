@@ -3,6 +3,7 @@ package gfftospark
 import gfftospark.Neo4JUtils._
 import org.neo4j.driver.v1._
 
+
 object GenesToNeo4j {
   def insertSequences(sequences: Seq[DnaSequence], dbPath: String): Unit =
     withSession(dbPath, "neo4j", "test") { implicit session =>
@@ -30,7 +31,7 @@ object GenesToNeo4j {
   }
 
   def insertGene(gene: Gene, sequenceName: String)(implicit tx: Transaction): NodeId = {
-    val geneNodeId = createNode("gene", Map(
+    val geneNodeId = createNode(NodeLabels.gene, Map(
       "sequence" -> sequenceName,
       "start" -> gene.start.toString,
       "end" -> gene.stop.toString,
@@ -45,7 +46,7 @@ object GenesToNeo4j {
 
   def insertTranscript(transcript: Splicing, geneNodeId: NodeId, gene: Gene)(implicit tx: Transaction): Unit = {
     // Create transcript node
-    val transcriptNode = createNode("splicing", properties = Map(
+    val transcriptNode = createNode(NodeLabels.splicing, properties = Map(
       "start" -> transcript.start.toString,
       "end" -> transcript.stop.toString,
       "geneID" -> gene.id
@@ -57,8 +58,8 @@ object GenesToNeo4j {
     // Create nodes for exons and introns. They are already in order
     val transcriptElementNodes = transcript.children.map { element =>
       val label = element match {
-        case Exon(_, _) => "cds" // TODO should it be exon?
-        case Intron(_, _) => "intron"
+        case Exon(_, _) => NodeLabels.cds // TODO should it be exon?
+        case Intron(_, _) => NodeLabels.intron
       }
 
       val nodeId = createNode(label, properties = Map(
@@ -85,4 +86,12 @@ object GenesToNeo4j {
     // Introns are 'in' a transcript
     intronNodes.foreach(createRelationship(_, transcriptNode, GffRelationshipTypes.in))
   }
+}
+
+object NodeLabels
+{
+  val gene = "gene"
+  val splicing = "splicing"
+  val cds = "cds"
+  val intron = "intron"
 }
