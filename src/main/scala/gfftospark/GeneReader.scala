@@ -154,13 +154,14 @@ object GcfGeneReader extends GeneReader with Serializable {
 
   override val getId = singleAttribute orElse attributeWithKey(ID_KEY)
 
-  def getParentInfo(gffLine: GffLine, parentFeatures: Seq[String], gffLinesRepository: GffLinesRepository): ParentInfo = {
-    val parentInfoOpt = for {
+  def getParentInfoOpt(gffLine: GffLine, gffLinesRepository: GffLinesRepository): Option[ParentInfoFound] =
+    for {
       parentId <- getParentId(gffLine)
       parent <- gffLinesRepository.gffLinesById.get(parentId)
     } yield ParentInfoFound(parentId, parent)
 
-    parentInfoOpt match {
+  def getParentInfo(gffLine: GffLine, parentFeatures: Seq[String], gffLinesRepository: GffLinesRepository): ParentInfo =
+    getParentInfoOpt(gffLine, gffLinesRepository) match {
       case Some(parentInfo) =>
         if (parentFeatures contains parentInfo.parent.feature) {
           parentInfo
@@ -170,13 +171,9 @@ object GcfGeneReader extends GeneReader with Serializable {
       case None =>
         ParentInfoNotFound(s"Could not find parent of ${gffLine} while looking for a parent.")
     }
-  }
 
   def getParentId(line: GffLine): Option[String] =
-    line.attributes match {
-      case Left(_) => None
-      case Right(attributes) => attributes.find(_._1 == PARENT_ID_KEY).map(_._2)
-    }
+    line.getAttribute(PARENT_ID_KEY)
 }
 
 object FPoaeGeneReader extends GeneReader with Serializable {
@@ -224,11 +221,7 @@ object FPoaeGeneReader extends GeneReader with Serializable {
   override val getId = singleAttribute
 
   def getParentId(line: GffLine, parentIdKey: String): Option[String] =
-    line.attributes match {
-      case Left(_) => None
-      case Right(attributes) =>
-        attributes.get(parentIdKey)
-    }
+    line.getAttribute(parentIdKey)
 }
 
 object GeneReaders {
