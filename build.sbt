@@ -20,6 +20,7 @@ libraryDependencies += "org.apache.hadoop" % "hadoop-common" % "2.8.1"
 // https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-hdfs
 libraryDependencies += "org.apache.hadoop" % "hadoop-hdfs" % "2.8.1"
 libraryDependencies += "com.github.scopt" %% "scopt" % "3.5.0"
+libraryDependencies += "org.neo4j.driver" % "neo4j-java-driver" % "1.4.0"
 
 mainClass in assembly := Some("gfftospark.GffToSpark")
 

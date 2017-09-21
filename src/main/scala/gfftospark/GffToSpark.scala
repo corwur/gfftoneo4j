@@ -29,15 +29,14 @@ object GffToSpark {
     try {
       // Read lines
       val lines: RDD[String] = sc.textFile(params.file)
-      val reader = GeneReaders.geneReadersById.get(params.format).getOrElse(throw new IllegalArgumentException("No such rader found"))
-      val dbPath = params.neo4jUrl
+      val reader = GeneReaders.geneReadersById.get(params.format).getOrElse(throw new IllegalArgumentException("No such reader found"))
+      val dbUrl = params.neo4jUrl
 
       // Parse lines into a meaningful data structure (GffLine)
       val gffLines: RDD[GffLineOrHeader] = lines
         .map { l =>
-          Try {
             GffParser.parseLineOrHeader(l)
-          }.transform[GffLineOrHeader](Success.apply, e => Failure(new IllegalArgumentException(s"Parsefout in regel '${l}'", e)))
+          .fold(msg => Failure(new IllegalArgumentException(s"Parsefout in regel '${l}': $msg")), Success.apply)
             .get
         }
 
@@ -56,7 +55,7 @@ object GffToSpark {
       }
 
       // Insert in database
-      GenesToNeo4j.insertInNeo4j(sequences.collect(), dbPath)
+      GenesToNeo4j.insertSequences(sequences.collect(), dbUrl)
 
       val nrGenes = sequences.map(_.genes.size).collect().sum
       println("Number of genes processed: " + nrGenes)
