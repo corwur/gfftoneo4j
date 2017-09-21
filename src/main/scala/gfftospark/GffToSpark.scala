@@ -18,9 +18,9 @@ object GffToSpark {
   def main(args: Array[String]): Unit = {
     try {
       // Read lines
-      val lines: RDD[String] = sc.textFile(args(0))
-      val reader = GeneReaders.geneReadersById.get(args(1)).getOrElse(throw new IllegalArgumentException("No such rader found"))
-      val dbPath = args(2)
+      val lines: RDD[String] = sc.textFile(args(0)) // .sample(false, 0.25)
+      val reader = GeneReaders.geneReadersById.getOrElse(args(1), throw new IllegalArgumentException("No such rader found"))
+      val dbUrl = args(2)
 
       // Parse lines into a meaningful data structure (GffLine)
       val gffLines: RDD[GffLineOrHeader] = lines
@@ -45,7 +45,7 @@ object GffToSpark {
       }
 
       // Insert in database
-      GenesToNeo4j.insertInNeo4j(sequences.collect(), dbPath)
+      GenesToNeo4j.insertSequences(sequences.collect(), dbUrl)
 
       val nrGenes = sequences.map(_.genes.size).collect().sum
       println("Number of genes processed: " + nrGenes)

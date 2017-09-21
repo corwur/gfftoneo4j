@@ -1,105 +1,97 @@
 package gfftospark
 
-import java.io.File
+import gfftospark.Neo4JUtils._
+import org.neo4j.driver.v1._
 
-import org.neo4j.graphdb.factory.GraphDatabaseFactory
-import org.neo4j.graphdb.{GraphDatabaseService, Label, Node, RelationshipType}
 
 object GenesToNeo4j {
-  def insertInNeo4j(sequences: Seq[DnaSequence], dbPath: String): Unit = {
-    val databasePath: File = new File(dbPath)
-    val db = new GraphDatabaseFactory().newEmbeddedDatabase(databasePath)
+  def insertSequences(sequences: Seq[DnaSequence], dbPath: String): Unit =
+    withSession(dbPath, "neo4j", "test") { implicit session =>
+      sequences.foreach(insertSequence)
+    }
 
-    sequences.foreach { sequence =>
-      println(s"Processing sequence ${sequence.name} with nr of genes ${sequence.genes.size}")
-      val geneNodes = sequence.genes.map(insertGeneToNeo4J(db, _, sequence.name))
+  private def insertSequence(sequence: DnaSequence)(implicit session: Session) = {
+    println(s"Processing sequence ${sequence.name} with nr of genes ${sequence.genes.size}")
 
-      // Link genes in order
-      inTransaction(db) {
-        createOrderedRelationships(geneNodes, GffRelationshipTypes.order)
+    val genesWithNodeId = inTransaction(session) { implicit tx =>
+      sequence.genes.zipWithIndex.map { case (gene, index) =>
+        println(s"Creating node for gene ${index} of ${sequence.genes.size}")
+        val geneNodeId = insertGene(gene, sequence.name)
+        (gene, geneNodeId)
       }
     }
 
-    db.shutdown()
+    println("Creating relationships between genes")
+    inTransaction(session) { implicit tx =>
+      // Link genes in order
+      val sortedGenesWithNodeId = genesWithNodeId.sortBy(_._1.start)
+      val nodeIds = sortedGenesWithNodeId.map(_._2)
+      createOrderedRelationships(nodeIds, GffRelationshipTypes.order)
+    }
   }
 
-  // TODO use a Scala Neo4J wrapper for nicer neo4j syntax
-  def insertGeneToNeo4J(db: GraphDatabaseService, gene: Gene, sequenceName: String): Node =
-    inTransaction(db) {
-      val geneNode = db.createNode(Label.label("gene"))
-      println("Creating gene node for gene " + gene.id)
-      // TODO organism property
-      geneNode.setProperty("sequence", sequenceName)
-      geneNode.setProperty("start", gene.start)
-      geneNode.setProperty("end", gene.stop)
-      geneNode.setProperty("geneID", gene.id)
+  def insertGene(gene: Gene, sequenceName: String)(implicit tx: Transaction): NodeId = {
+    val geneNodeId = createNode(NodeLabels.gene, Map(
+      "sequence" -> sequenceName,
+      "start" -> gene.start.toString,
+      "end" -> gene.stop.toString,
+      "geneID" -> gene.id
+    ))
+    // TODO organism property
 
-      gene.splicings.foreach(insertTranscript(_, geneNode, gene, db))
+    gene.splicings.foreach(insertTranscript(_, geneNodeId, gene))
 
-      geneNode
-    }
+    geneNodeId
+  }
 
-  def insertTranscript(transcript: Splicing, geneNode: Node, gene: Gene, db: GraphDatabaseService): Unit = {
+  def insertTranscript(transcript: Splicing, geneNodeId: NodeId, gene: Gene)(implicit tx: Transaction): Unit = {
     // Create transcript node
-    val transcriptNode = db.createNode(Label.label("splicing"))
-
-    transcriptNode.setProperty("start", transcript.start)
-    transcriptNode.setProperty("end", transcript.stop)
-    transcriptNode.setProperty("geneID", gene.id)
+    val transcriptNode = createNode(NodeLabels.splicing, properties = Map(
+      "start" -> transcript.start.toString,
+      "end" -> transcript.stop.toString,
+      "geneID" -> gene.id
+    ))
 
     // Link gene to transcripts
-    transcriptNode.createRelationshipTo(geneNode, GffRelationshipTypes.transcribes)
+    createRelationship(transcriptNode, geneNodeId, GffRelationshipTypes.transcribes)
 
     // Create nodes for exons and introns. They are already in order
-    val geneElementNodes = transcript.children.map { element =>
+    val transcriptElementNodes = transcript.children.map { element =>
       val label = element match {
-        case Exon(_, _) => "cds" // TODO should it be exon?
-        case Intron(_, _) => "intron"
+        case Exon(_, _) => NodeLabels.cds // TODO should it be exon?
+        case Intron(_, _) => NodeLabels.intron
       }
 
-      val node = db.createNode(Label.label(label))
+      val nodeId = createNode(label, properties = Map(
+        "start" -> element.start.toString,
+        "end" -> element.stop.toString,
+        "geneID" -> gene.id
+      ))
 
-      node.setProperty("start", element.start)
-      node.setProperty("end", element.stop)
-      node.setProperty("geneID", gene.id)
-
-      (element, node)
+      (element, nodeId)
     }
 
     // Exons and introns are linked
-    createOrderedRelationships(geneElementNodes.map(_._2), GffRelationshipTypes.links)
+    createOrderedRelationships(transcriptElementNodes.map(_._2), GffRelationshipTypes.links)
 
     // Link exons as mRNA
-    val exonNodes = geneElementNodes.collect { case (Exon(_, _), node) => node }
-    val intronNodes = geneElementNodes.collect { case (Intron(_, _), node) => node }
+    val exonNodes = transcriptElementNodes.collect { case (Exon(_, _), node) => node }
+    val intronNodes = transcriptElementNodes.collect { case (Intron(_, _), node) => node }
 
     createOrderedRelationships(exonNodes, GffRelationshipTypes.mRna)
 
     // Exons code a transcript
-    exonNodes.foreach(_.createRelationshipTo(transcriptNode, GffRelationshipTypes.codes))
+    exonNodes.foreach(createRelationship(_, transcriptNode, GffRelationshipTypes.codes))
 
     // Introns are 'in' a transcript
-    intronNodes.foreach(_.createRelationshipTo(transcriptNode, GffRelationshipTypes.in))
+    intronNodes.foreach(createRelationship(_, transcriptNode, GffRelationshipTypes.in))
   }
+}
 
-  def createOrderedRelationships(elements: Seq[Node], relType: RelationshipType): Unit =
-    createPairs(elements).foreach { case (nodeA, nodeB) =>
-      nodeA.createRelationshipTo(nodeB, relType)
-    }
-
-  def createPairs[T](elements: Seq[T]): Seq[(T, T)] =
-    // TODO what does it mean if they are empty?
-    if (elements.nonEmpty) elements.zip(elements.tail) else Seq.empty
-
-  def inTransaction[T](db: GraphDatabaseService)(operation: => T): T = {
-    val tx = db.beginTx
-    try {
-      val result = operation
-      tx.success()
-      result
-    }
-    finally {
-      if (tx != null) tx.close()
-    }
-  }
+object NodeLabels
+{
+  val gene = "gene"
+  val splicing = "splicing"
+  val cds = "cds"
+  val intron = "intron"
 }
