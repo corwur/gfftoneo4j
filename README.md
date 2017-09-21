@@ -1,3 +1,5 @@
+[![CircleCI](https://circleci.com/gh/corwur/gfftoneo4j.svg?style=shield)](https://circleci.com/gh/corwur/gfftoneo4j)
+
 # GFF Import to Neo4J
 
 ## About
