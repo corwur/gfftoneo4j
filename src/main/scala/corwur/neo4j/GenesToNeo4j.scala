@@ -1,18 +1,11 @@
 package corwur.neo4j
 
-import corwur.GffRelationshipTypes
 import corwur.genereader._
 import corwur.neo4j.Neo4JUtils._
 import org.neo4j.driver.v1._
 
-
 object GenesToNeo4j {
-  def insertSequences(sequences: Seq[DnaSequence], dbPath: String): Unit =
-    withSession(dbPath, "neo4j", "test") { implicit session =>
-      sequences.foreach(insertSequence)
-    }
-
-  private def insertSequence(sequence: DnaSequence)(implicit session: Session) = {
+  def insertSequence(sequence: DnaSequence)(implicit session: Session) = {
     println(s"Processing sequence ${sequence.name} with nr of genes ${sequence.genes.size}")
 
     val genesWithNodeId = inTransaction(session) { implicit tx =>
