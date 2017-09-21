@@ -1,4 +1,4 @@
-package blast
+package corwur.blast
 
 import scala.io.Source
 

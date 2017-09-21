@@ -1,4 +1,4 @@
-name := "gfftospark"
+name := "gfftoneo4j"
 
 scalaVersion := "2.11.8"
 
@@ -19,8 +19,10 @@ libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % "test"
 libraryDependencies += "org.apache.hadoop" % "hadoop-common" % "2.8.1"
 // https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-hdfs
 libraryDependencies += "org.apache.hadoop" % "hadoop-hdfs" % "2.8.1"
+libraryDependencies += "com.github.scopt" %% "scopt" % "3.5.0"
+libraryDependencies += "org.neo4j.driver" % "neo4j-java-driver" % "1.4.0"
 
-mainClass in assembly := Some("gfftospark.GffToSpark")
+mainClass in assembly := Some("corwur.Application")
 
 assemblyMergeStrategy in assembly := {
   case PathList("META-INF", "services", "org.apache.hadoop.fs.FileSystem") => MergeStrategy.filterDistinctLines

@@ -1,4 +1,6 @@
-package gfftospark
+package corwur.genereader
+
+import corwur.gffparser.GffLine
 
 object FPoaeGffReader extends GenericGffReader {
 

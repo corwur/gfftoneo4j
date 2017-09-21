@@ -1,4 +1,4 @@
-package blast
+package corwur.blast
 
 import scala.util.Try
 import scala.util.parsing.combinator.{JavaTokenParsers, RegexParsers}

@@ -1,4 +1,4 @@
-package gfftospark
+package corwur.genereader
 
 /**
   * This file contains data structures (models) that represent the genetic data in a GFF file
@@ -13,9 +13,9 @@ sealed trait TranscriptElement extends HasPositionOnDna {
   def attributes: Map[String, String]
 }
 
-case class DnaSequence(genes: Seq[Gene])
+case class DnaSequence(name: String, genes: Seq[Gene])
 
-case class Gene(id: String, start: Long, stop: Long, splicings: Seq[Splicing], attributes: Map[String, String]) extends HasPositionOnDna
+case class Gene(sequenceName: String, id: String, start: Long, stop: Long, splicings: Seq[Splicing], attributes: Map[String, String]) extends HasPositionOnDna
 
 case class Exon(start: Long, stop: Long, attributes: Map[String, String]) extends TranscriptElement
 

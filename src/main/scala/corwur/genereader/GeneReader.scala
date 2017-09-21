@@ -1,6 +1,7 @@
-package gfftospark
+package corwur.genereader
 
-import org.apache.spark.rdd.RDD
+import corwur.gffparser.GffLine
+import FeatureIdReader.{FeatureIdReader, attributeWithKey, singleAttribute}
 
 /**
   * Functions for reading Gene objects and their Transcripts from a series of GFFLines
@@ -9,15 +10,17 @@ trait GeneReader {
 
   def isExon(gffLine: GffLine): Boolean
 
-  def getId(gffLine: GffLine): Option[String]
+  val getId: FeatureIdReader
 
   def getParentSplicing(gffLineTreeNode: GffLineTreeNode[Exon], gffLinesRepository: GffLinesRepository): ParentInfo
 
   def getParentGene(gffLineTreeNode: GffLineTreeNode[Splicing], gffLinesRepository: GffLinesRepository): ParentInfo
 
   sealed trait ParentInfo extends Serializable
+
   final case class ParentInfoFound(parentId: String, parent: GffLine) extends ParentInfo {
     override def hashCode() = parentId.hashCode
+
     override def equals(obj: Any) =
       if (obj.isInstanceOf[ParentInfoFound]) {
         parentId equals obj.asInstanceOf[ParentInfoFound].parentId
@@ -25,8 +28,10 @@ trait GeneReader {
         false
       }
   }
+
   final case class ParentInfoNotFound(message: String) extends ParentInfo {
     override def hashCode(): Int = 0
+
     override def equals(obj: scala.Any): Boolean =
       obj.isInstanceOf[ParentInfoNotFound]
   }
@@ -48,28 +53,28 @@ trait GeneReader {
     def empty: GffLinesRepository = GffLinesRepository(Map.empty, Seq.empty)
   }
 
-  def toGffLines(gffLines: RDD[GffLine]): GffLinesRepository = {
+  def toGffLines(gffLines: Iterable[GffLine]): GffLinesRepository = {
     gffLines.aggregate(GffLinesRepository.empty)(
       (acc: GffLinesRepository, curr: GffLine) => acc add curr,
       (left: GffLinesRepository, right: GffLinesRepository) => left + right
     )
   }
 
-  def getExons(gffLines: RDD[GffLine]): RDD[Writer[Option[GffLineTreeNode[Exon]]]] = {
+  def getExons(gffLines: Iterable[GffLine]): Iterable[Writer[Option[GffLineTreeNode[Exon]]]] = {
     gffLines
       .filter(isExon)
       .map(gffLine => {
         GffLineTreeNode(gffLine, Exon(gffLine.start, gffLine.stop, gffLine.attributesAsMap), Seq.empty)
       })
-      .map(Some(_))
+      .map(Option.apply)
       .map(Writer(_))
   }
 
   def groupByParents[A, B](
-                            gffLineTreeNodes: RDD[Writer[Option[GffLineTreeNode[A]]]],
+                            gffLineTreeNodes: Iterable[Writer[Option[GffLineTreeNode[A]]]],
                             getParentInfo: (GffLineTreeNode[A], GffLinesRepository) => ParentInfo,
                             toParentTreeNode: (ParentInfoFound, Seq[GffLineTreeNode[A]]) => GffLineTreeNode[B],
-                            gffLinesRepository: GffLinesRepository): RDD[Writer[Option[GffLineTreeNode[B]]]] = {
+                            gffLinesRepository: GffLinesRepository): Iterable[Writer[Option[GffLineTreeNode[B]]]] = {
 
     type T = (ParentInfo, Iterable[Writer[Option[GffLineTreeNode[A]]]])
 
@@ -81,7 +86,7 @@ trait GeneReader {
           val otherMessages = gffLineTreeNodeWritersSeq.flatMap(_.logs)
           val allMessages = summary +: otherMessages
           Writer(allMessages, None)
-        case (parentInfoFound @ ParentInfoFound(_, _), gffLineTreeNodeWriters) =>
+        case (parentInfoFound@ParentInfoFound(_, _), gffLineTreeNodeWriters) =>
           val gffLineTreeNodeWritersSeq = gffLineTreeNodeWriters.toSeq
           val gffLineTreeNodes = gffLineTreeNodeWritersSeq.flatMap(_.value)
           val messages = gffLineTreeNodeWritersSeq.flatMap(_.logs)
@@ -96,7 +101,7 @@ trait GeneReader {
       .map(toParentTreeNodeWriter)
   }
 
-  def getSplicings(gffLines: RDD[GffLine], gffLinesAlt: GffLinesRepository): RDD[Writer[Option[GffLineTreeNode[Splicing]]]] =
+  def getSplicings(gffLines: Iterable[GffLine], gffLinesAlt: GffLinesRepository): Iterable[Writer[Option[GffLineTreeNode[Splicing]]]] =
     groupByParents[Exon, Splicing](
       getExons(gffLines),
       getParentSplicing,
@@ -108,7 +113,7 @@ trait GeneReader {
       },
       gffLinesAlt)
 
-  def getGenes(gffLines: RDD[GffLine], gffLinesAlt: GffLinesRepository): RDD[Writer[Option[GffLineTreeNode[Gene]]]] = {
+  def getGenes(gffLines: Iterable[GffLine], gffLinesAlt: GffLinesRepository): Iterable[Writer[Option[GffLineTreeNode[Gene]]]] = {
     val splicings = getSplicings(gffLines, gffLinesAlt)
     groupByParents[Splicing, Gene](
       splicings,
@@ -117,6 +122,7 @@ trait GeneReader {
         val splicings = splicingTreeNodes.map(_.domainObject).toSeq
         val splicingGffLines = splicingTreeNodes.map(_.gffLine).toSeq
         val gene = Gene(
+          parentInfo.parent.seqname,
           parentInfo.parentId,
           parentInfo.parent.start,
           parentInfo.parent.stop,
@@ -148,19 +154,16 @@ object GcfGeneReader extends GeneReader with Serializable {
   override def getParentGene(gffLineTreeNode: GffLineTreeNode[Splicing], gffLinesRepository: GffLinesRepository) =
     getParentInfo(gffLineTreeNode.gffLine, Seq(GENE), gffLinesRepository)
 
-  override def getId(gffLine: GffLine): Option[String] =
-    gffLine.attributes match {
-      case Left(id) => Some(id)
-      case Right(attributes) => attributes.find(_._1 == ID_KEY).map(_._2)
-    }
+  override val getId = singleAttribute orElse attributeWithKey(ID_KEY)
 
-  def getParentInfo(gffLine: GffLine, parentFeatures: Seq[String], gffLinesRepository: GffLinesRepository): ParentInfo = {
-    val parentInfoOpt = for {
+  def getParentInfoOpt(gffLine: GffLine, gffLinesRepository: GffLinesRepository): Option[ParentInfoFound] =
+    for {
       parentId <- getParentId(gffLine)
       parent <- gffLinesRepository.gffLinesById.get(parentId)
     } yield ParentInfoFound(parentId, parent)
 
-    parentInfoOpt match {
+  def getParentInfo(gffLine: GffLine, parentFeatures: Seq[String], gffLinesRepository: GffLinesRepository): ParentInfo =
+    getParentInfoOpt(gffLine, gffLinesRepository) match {
       case Some(parentInfo) =>
         if (parentFeatures contains parentInfo.parent.feature) {
           parentInfo
@@ -170,13 +173,9 @@ object GcfGeneReader extends GeneReader with Serializable {
       case None =>
         ParentInfoNotFound(s"Could not find parent of ${gffLine} while looking for a parent.")
     }
-  }
 
   def getParentId(line: GffLine): Option[String] =
-    line.attributes match {
-      case Left(_) => None
-      case Right(attributes) => attributes.find(_._1 == PARENT_ID_KEY).map(_._2)
-    }
+    line.getAttribute(PARENT_ID_KEY)
 }
 
 object FPoaeGeneReader extends GeneReader with Serializable {
@@ -194,7 +193,7 @@ object FPoaeGeneReader extends GeneReader with Serializable {
   override def isExon(gffLine: GffLine): Boolean = gffLine.feature == EXON
 
   override def getParentSplicing(gffLineTreeNode: GffLineTreeNode[Exon], gffLinesRepository: GffLinesRepository) =
-     getParentId(gffLineTreeNode.gffLine, SPLICING_ID_KEY) match {
+    getParentId(gffLineTreeNode.gffLine, SPLICING_ID_KEY) match {
       case Some(splicingId) =>
         gffLinesRepository.gffLinesById.get(splicingId) match {
           case Some(parent) => ParentInfoFound(splicingId, parent)
@@ -220,44 +219,35 @@ object FPoaeGeneReader extends GeneReader with Serializable {
     }
   }
 
-  override def getId(gffLine: GffLine): Option[String] =
-    gffLine.attributes match {
-      case Left(id) => Some(id)
-      case Right(attributes) =>
-        for {
-          idKey <- ID_KEYS_BY_FEATURE.get(gffLine.feature)
-          id <- attributes.get(idKey)
-        } yield id
-    }
+  // Both genes and transcripts have their ID as single attribute
+  override val getId = singleAttribute
 
   def getParentId(line: GffLine, parentIdKey: String): Option[String] =
-    line.attributes match {
-      case Left(_) => None
-      case Right(attributes) =>
-        attributes.get(parentIdKey)
-    }
+    line.getAttribute(parentIdKey)
 }
 
 object GeneReaders {
-  val geneReadersById: Map[String, RDD[GffLine] => Array[Gene]] = Map(
+  val geneReadersById: Map[String, Iterable[GffLine] => Array[Gene]] = Map(
     "gcf" -> (gffLines => {
-      val gffLineTreeNodeWriters = GcfGeneReader.getGenes(gffLines, GcfGeneReader.toGffLines(gffLines)).collect()
+      val gffLineTreeNodeWriters = GcfGeneReader.getGenes(gffLines, GcfGeneReader.toGffLines(gffLines))
 
-        val genes = gffLineTreeNodeWriters.flatMap { gffLineTreeNodeWriter =>
-          gffLineTreeNodeWriter.logs.foreach(println)
-          gffLineTreeNodeWriter.value.map(_.domainObject).toSeq
-        }
+      val genes = gffLineTreeNodeWriters.flatMap { gffLineTreeNodeWriter =>
+        gffLineTreeNodeWriter.logs.foreach(println)
+        gffLineTreeNodeWriter.value.map(_.domainObject).toSeq
+      }
 
-      genes
+      genes.toArray
     }),
     "fpoae" -> (gffLines => {
-      val gffLineTreeNodeWriters = FPoaeGeneReader.getGenes(gffLines, FPoaeGeneReader.toGffLines(gffLines)).collect()
+      val gffLineTreeNodeWriters = FPoaeGeneReader.getGenes(gffLines, FPoaeGeneReader.toGffLines(gffLines))
 
       val genes = gffLineTreeNodeWriters.flatMap { gffLineTreeNodeWriter =>
         gffLineTreeNodeWriter.value.map(_.domainObject).toSeq
       }
 
-      genes
+      genes.toArray
     })
   )
+
+  val formats = geneReadersById.keys
 }

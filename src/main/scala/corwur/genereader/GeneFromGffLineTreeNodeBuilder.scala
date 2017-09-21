@@ -1,4 +1,4 @@
-package gfftospark
+package corwur.genereader
 
 trait GeneFromGffLineTreeNodeBuilder {
 
@@ -39,6 +39,7 @@ class StandardGeneFromGffLineTreeNodeBuilder
     idAsEither.right.flatMap(id => {
       splicingsAsEither.right.map(splicings => {
         Gene(id,
+             "SEQUENCENAME", // TODO?
              gffLineTreeNode.gffLine.start,
              gffLineTreeNode.gffLine.stop,
              splicings,

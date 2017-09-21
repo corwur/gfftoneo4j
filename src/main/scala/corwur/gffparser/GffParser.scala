@@ -1,12 +1,28 @@
-package gfftospark
+package corwur.gffparser
 
-import scala.util.Try
+import corwur.genereader.{Forward, Reverse, Strand}
+
 import scala.util.parsing.combinator.JavaTokenParsers
 
 /**
   * Functions for parsing lines of a GFF file
   */
 object GffParser extends JavaTokenParsers {
+  /**
+    * Parse a line in a GFF file
+    *
+    * @param s The line to parse
+    * @return Either an error message or a successful result: a [[GffLine]] or [[Header]]
+    */
+  def parseLineOrHeader(s: String): Either[String, GffLineOrHeader] =
+    parseAll(lineOrHeader, s) match {
+      case Success(result, _) => Right(result)
+      case Failure(msg, _) =>  Left(msg)
+      case Error(msg, _) =>  Left(msg)
+    }
+
+  def lineOrHeader: Parser[GffLineOrHeader] =
+    line | header
 
   val attributeKeyValueSeparator = ";"
 
@@ -105,38 +121,6 @@ object GffParser extends JavaTokenParsers {
                 attributes)
     }
 
-  def parseLineOrHeader(s: String): GffLineOrHeader =
-    parseAll(lineOrHeader, s).getOrElse(throw new IllegalArgumentException)
-
-  def lineOrHeader: Parser[GffLineOrHeader] =
-    line | header
-}
-
-object App {
-  def main(args: Array[String]): Unit = {
-
-    val toParse =
-      """
-        |3 transcribed_unprocessed_pseudogene  gene        11869 14409 . - . henk devries; gene_id "ENSG00000223972"; henk de.vries; Note "Clone Y74C9A; Genbank AC024206"; gene_name "DDX11L1"; gene_source "havana"; gene_biotype "transcribed_unprocessed_pseudogene";
-        |1 processed_transcript                transcript  11869 14409 . + . roborovski a 1
-        |Chr3   giemsa heterochromatin  4500000 6000000 . . .   Band 3q12.1
-        |Chr3 giemsa heterochromatin 4500000 6000000 . . . Band 3q12.1 ; Note "Marfan's syndrome"
-        |Chr1        assembly Link   10922906 11177731 . . . Target Sequence:LINK_H06O01 1 254826
-        |LINK_H06O01 assembly Cosmid 32386    64122    . . . Target Sequence:F49B2       6 31742
-        |X	Ensembl	Repeat	2419108	2419128	42	.	.	hid=trf; hstart=1; hend=21
-        |X	Ensembl	Repeat	2419108	2419410	2502	-	.	hid=AluSx; hstart=1; hend=303
-        |X	Ensembl	Repeat	2419108	2419128	0	.	.	hid=dust; hstart=2419108; hend=2419128
-        |X	Ensembl	Pred.trans.	2416676	2418760	450.19	-	2	genscan=GENSCAN00000019335
-        |X	Ensembl	Variation	2413425	2413425	.	+	.
-        |X	Ensembl	Variation	2413805	2413805	.	+	.
-        |NC_026474.1	RefSeq	tRNA	571898	572014	.	+	.	ID=rna231;Parent=gene231;Dbxref=GeneID:23560927;gbkey=tRNA;product=tRNA-Gly
-        |NC_026474.1	RefSeq	region	1	11697295	.	+	.	ID=id0;Dbxref=taxon:229533;Name=1;chromosome=1;gb-synonym=Gibberella zeae PH-1;gbkey=Src;genome=chromosome;mol_type=genomic DNA;old-name=Gibberella zeae PH-1;strain=PH-1%3B NRRL 31084
-        """.stripMargin
-
-    val lines = toParse.split("\n") map (_.trim) filter (_.nonEmpty)
-
-    lines map GffParser.parseLineOrHeader foreach println
-  }
 }
 
 sealed trait GffLineOrHeader
@@ -154,6 +138,9 @@ final case class GffLine(
                     frame: Option[Long],
                     attributes: Either[String, Map[String, String]] // Either a single string or list of attributes
                   ) extends Serializable with GffLineOrHeader {
+  def getAttribute(key: String): Option[String] =
+    attributes.right.toOption.flatMap(_.get(key))
+
   def attributesAsMap: Map[String, String] = {
     attributes match {
       case Left(singleAttribute) => Map("attr" -> singleAttribute)

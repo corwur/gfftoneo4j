@@ -1,4 +1,4 @@
-package gfftospark
+package corwur.genereader
 
 class Writer[A](val logs: Seq[String], val value: A) extends Serializable {
 

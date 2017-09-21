@@ -1,4 +1,6 @@
-package gfftospark
+package corwur.genereader
+
+import corwur.gffparser.GffLine
 
 import scala.collection.parallel.{ParIterable, ParMap, ParSeq}
 
