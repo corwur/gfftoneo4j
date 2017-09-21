@@ -31,8 +31,6 @@ trait GeneReader {
       obj.isInstanceOf[ParentInfoNotFound]
   }
 
-  case class GffLineAndDomainObject[A](gffLine: GffLine, domainObject: A) extends Serializable
-
   case class GffLineTreeNode[A](gffLine: GffLine, domainObject: A, children: Seq[GffLine]) extends Serializable
 
   final case class GffLinesRepository(gffLinesById: Map[String, GffLine], gffLinesWithoutId: Seq[GffLine]) {

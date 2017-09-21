@@ -5,6 +5,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 import org.neo4j.graphdb.RelationshipType
 
 import scala.util.{Failure, Success, Try}
+import scala.io.Source
 
 object GffToSpark {
 
@@ -16,6 +17,25 @@ object GffToSpark {
 
   /** Main function */
   def main(args: Array[String]): Unit = {
+
+    val bufferedSource = Source.fromFile(args(0))
+    val lines = bufferedSource.getLines().toSeq.par
+    bufferedSource.close
+    val gffLines = lines.map(GffParser.parseLineOrHeader).collect { case l @ GffLine(_, _, _, _, _, _, _, _, _) => l }
+    val gffLineTree = FPoaeGffReader.buildTree(gffLines)
+    val gffLineTreeNodesForGenes =
+      if (gffLineTree.errors.isEmpty) {
+        Right(gffLineTree.rootNodes.seq)
+      } else {
+        Left(gffLineTree.errors.seq)
+      }
+
+    val geneFromGffLineTreeNodeBuilder = new StandardGeneFromGffLineTreeNodeBuilder
+    val res = for {
+      gffLineTreeNodesForGenes <- gffLineTreeNodesForGenes.right
+      genes <- geneFromGffLineTreeNodeBuilder.toGenes(gffLineTreeNodesForGenes).right
+    } yield genes
+
     try {
       // Read lines
       val lines: RDD[String] = sc.textFile(args(0))
