@@ -1,4 +1,4 @@
-package gfftospark
+package corwur.gffparser
 
 import org.scalatest._
 

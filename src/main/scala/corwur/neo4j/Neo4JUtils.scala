@@ -1,4 +1,4 @@
-package gfftospark
+package corwur.neo4j
 
 import org.neo4j.driver.v1._
 import org.neo4j.graphdb.RelationshipType

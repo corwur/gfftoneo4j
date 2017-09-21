@@ -1,9 +1,11 @@
-package gfftospark
+package corwur.genereader
 
+import corwur.gffparser.{GffLine, GffParser, UnitSpec}
 import org.scalatest.LoneElement
 
 class GeneReaderSpec extends UnitSpec with LoneElement {
   "FpoaeGeneReader" should "be able to parse a GFF file with two genes" in {
+    pending
     val file =
       """Chr1	AUGUSTUS	intron	1	144	0.99	-	.	transcript_id "FPOA_00001.t1"; gene_id "FPOA_00001";
         |Chr1	AUGUSTUS	gene	1	2803	0.8	-	.	FPOA_00001

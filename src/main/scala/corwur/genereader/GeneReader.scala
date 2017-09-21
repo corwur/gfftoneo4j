@@ -1,6 +1,7 @@
-package gfftospark
+package corwur.genereader
 
-import FeatureIdReader._
+import corwur.gffparser.GffLine
+import FeatureIdReader.{FeatureIdReader, attributeWithKey, singleAttribute}
 
 /**
   * Functions for reading Gene objects and their Transcripts from a series of GFFLines

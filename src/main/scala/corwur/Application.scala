@@ -1,31 +1,35 @@
-package gfftospark
+package corwur
 
+import corwur.CommandLineParser.CommandLineArgs
+import corwur.genereader.{DnaSequence, GeneReaders}
+import corwur.gffparser.{GffLine, GffLineOrHeader, GffParser}
+import corwur.neo4j.GenesToNeo4j
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 import org.neo4j.graphdb.RelationshipType
-import scopt.OptionParser
 
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
-case class CommandLineParams(file: String, format: String = "fpoae", neo4jUrl: String = "bolt://127.0.0.1:7687", neo4jUsername: String = "neo4j", neo4jPassword: String = "test")
-
-object GffToSpark {
+/**
+  * Main class
+  *
+  * Reads and parses a GFF file, construct Genes and insert them into a Neo4j database
+  */
+object Application {
 
   @transient lazy val conf: SparkConf = new SparkConf()
     .setMaster("local")
-    .setAppName("GffToSpark")
+    .setAppName("gfftoneo4j")
     .set("fs.file.impl", classOf[org.apache.hadoop.fs.LocalFileSystem].getName)
   @transient lazy val sc: SparkContext = new SparkContext(conf)
 
   /** Main function */
-  def main(args: Array[String]): Unit = {
-    commandLineParser.parse(args, CommandLineParams("")) match {
-      case Some(config) => importGff(config)
-      case None => // command line arguments are bad, error message will have been displayed
-    }
-  }
+  def main(args: Array[String]): Unit =
+    CommandLineParser.parser
+      .parse(args, init = CommandLineArgs(""))
+      .foreach(importGffFile)
 
-  private def importGff(params: CommandLineParams) = {
+  private def importGffFile(params: CommandLineArgs) = {
     try {
       // Read lines
       val lines: RDD[String] = sc.textFile(params.file)
@@ -36,7 +40,7 @@ object GffToSpark {
       val gffLines: RDD[GffLineOrHeader] = lines
         .map { l =>
             GffParser.parseLineOrHeader(l)
-          .fold(msg => Failure(new IllegalArgumentException(s"Parsefout in regel '${l}': $msg")), Success.apply)
+          .fold(msg => Failure(new IllegalArgumentException(s"Parse error in line '${l}': $msg")), Success.apply)
             .get
         }
 
@@ -63,27 +67,6 @@ object GffToSpark {
     finally {
       sc.stop()
     }
-  }
-
-  val commandLineParser = new OptionParser[CommandLineParams]("gfftoneo4j") {
-    head("gfftoneo4j", "0.1")
-
-    opt[String]('f', "file")
-      .required()
-      .valueName("<file>")
-      .action((x, c) => c.copy(file = x))
-      .text("Path to GFF file")
-
-    opt[String]('t', "type")
-      .required()
-      .valueName("<type>")
-      .action((x, c) => c.copy(format = x))
-      .text(s"GFF file type. Possible values: ${GeneReaders.formats.mkString(",")}")
-
-    opt[String]('u', "url")
-      .valueName("<url>")
-      .action((x, c) => c.copy(neo4jUrl = x))
-      .text("Neo4J server URL")
   }
 }
 

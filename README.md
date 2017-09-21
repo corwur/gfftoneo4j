@@ -25,11 +25,17 @@ Written in Scala
 ## Development
 ### Building
 * Run `sbt assembly`
-* This produces `gfftospark-assembly-0.1-SNAPSHOT.jar`
+* This produces `gfftoneo4j-assembly-0.1-SNAPSHOT.jar`
+
+### Set up Neo4J
+* Start Neo4j at some folder
+* Browse to the shown Neo4J URL
+* Use the default password 'neo4j' and change it to 'test'
+
 
 ## Running
 ```
-scala target/scala-2.11/gfftospark-assembly-0.1-SNAPSHOT.jar 
+scala target/scala-2.11/gfftoneo4j-assembly-0.1-SNAPSHOT.jar 
 	-f pathToFile 
 	-t gffType 
 	-u neo4jUrl
@@ -38,15 +44,3 @@ scala target/scala-2.11/gfftospark-assembly-0.1-SNAPSHOT.jar
 * Path to GFF file
 * GFF file format (`fpoae` | `gcf`)
 * Neo4J server address, eg `bolt://127.0.0.1:7687`
-
-### Set up Neo4J
-* Start Neo4j at some folder
-* Browse to the shown Neo4J URL
-* Use the default password 'neo4j' and change it to 'test'
-
-## Running
-```
-sbt runMain gfftospark.GffToSpark "/Users/svr21640/projects/wageningen/corwur/f_poae_renamed.gff" "fpoae" "bolt://127.0.0.1:7687"
-```
-
-

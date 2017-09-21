@@ -1,12 +1,28 @@
-package gfftospark
+package corwur.gffparser
 
-import scala.util.Try
+import corwur.genereader.{Forward, Reverse, Strand}
+
 import scala.util.parsing.combinator.JavaTokenParsers
 
 /**
   * Functions for parsing lines of a GFF file
   */
 object GffParser extends JavaTokenParsers {
+  /**
+    * Parse a line in a GFF file
+    *
+    * @param s The line to parse
+    * @return Either an error message or a successful result: a [[GffLine]] or [[Header]]
+    */
+  def parseLineOrHeader(s: String): Either[String, GffLineOrHeader] =
+    parseAll(lineOrHeader, s) match {
+      case Success(result, _) => Right(result)
+      case Failure(msg, _) =>  Left(msg)
+      case Error(msg, _) =>  Left(msg)
+    }
+
+  def lineOrHeader: Parser[GffLineOrHeader] =
+    line | header
 
   val attributeKeyValueSeparator = ";"
 
@@ -105,15 +121,6 @@ object GffParser extends JavaTokenParsers {
                 attributes)
     }
 
-  def parseLineOrHeader(s: String): Either[String, GffLineOrHeader] =
-    parseAll(lineOrHeader, s) match {
-      case Success(result, _) => Right(result)
-      case Failure(msg, _) =>  Left(msg)
-      case Error(msg, _) =>  Left(msg)
-    }
-
-  def lineOrHeader: Parser[GffLineOrHeader] =
-    line | header
 }
 
 sealed trait GffLineOrHeader

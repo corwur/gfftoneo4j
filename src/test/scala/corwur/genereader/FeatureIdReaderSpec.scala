@@ -1,5 +1,6 @@
-package gfftospark
+package corwur.genereader
 
+import corwur.gffparser.{GffLine, GffParser, UnitSpec}
 import org.scalatest.EitherValues
 
 class FeatureIdReaderSpec extends UnitSpec with EitherValues {

@@ -1,6 +1,8 @@
-package gfftospark
+package corwur.neo4j
 
-import gfftospark.Neo4JUtils._
+import corwur.GffRelationshipTypes
+import corwur.genereader._
+import corwur.neo4j.Neo4JUtils._
 import org.neo4j.driver.v1._
 
 

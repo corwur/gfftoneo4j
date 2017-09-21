@@ -1,4 +1,4 @@
-package gfftospark
+package corwur.genereader
 
 /**
   * This file contains data structures (models) that represent the genetic data in a GFF file
