@@ -1,23 +1,31 @@
 package corwur.genereader
 
+
 import corwur.gffparser.GffLine
 import FeatureIdReader.{FeatureIdReader, attributeWithKey, singleAttribute}
+
+//REVIEW: File is to large
 
 /**
   * Functions for reading Gene objects and their Transcripts from a series of GFFLines
   */
 trait GeneReader {
 
+  //REVIEW: implementation is identical in both classes
   def isExon(gffLine: GffLine): Boolean
 
   val getId: FeatureIdReader
 
+  //REVIEW: why is the repository a parameter.
   def getParentSplicing(gffLineTreeNode: GffLineTreeNode[Exon], gffLinesRepository: GffLinesRepository): ParentInfo
 
+  //REVIEW: Splicing does not need to be in the model
   def getParentGene(gffLineTreeNode: GffLineTreeNode[Splicing], gffLinesRepository: GffLinesRepository): ParentInfo
 
+  //REVIEW: why use an inner classes for this datastructure?
   sealed trait ParentInfo extends Serializable
 
+  //REVIEW: This looks a little bit verbose?
   final case class ParentInfoFound(parentId: String, parent: GffLine) extends ParentInfo {
     override def hashCode() = parentId.hashCode
 
@@ -36,10 +44,13 @@ trait GeneReader {
       obj.isInstanceOf[ParentInfoNotFound]
   }
 
+  //REVIEW: not used?
   case class GffLineAndDomainObject[A](gffLine: GffLine, domainObject: A) extends Serializable
 
+  //REVIEW: why use the name domainObject?
   case class GffLineTreeNode[A](gffLine: GffLine, domainObject: A, children: Seq[GffLine]) extends Serializable
 
+  //REVIEW: should this be an extenal class
   final case class GffLinesRepository(gffLinesById: Map[String, GffLine], gffLinesWithoutId: Seq[GffLine]) {
     def +(that: GffLinesRepository): GffLinesRepository =
       GffLinesRepository(this.gffLinesById ++ that.gffLinesById, this.gffLinesWithoutId ++ that.gffLinesWithoutId)
@@ -55,6 +66,7 @@ trait GeneReader {
     def empty: GffLinesRepository = GffLinesRepository(Map.empty, Seq.empty)
   }
 
+  //REVIEW: Why not use a simple foreach or something?
   def toGffLines(gffLines: Iterable[GffLine]): GffLinesRepository = {
     gffLines.aggregate(GffLinesRepository.empty)(
       (acc: GffLinesRepository, curr: GffLine) => acc add curr,
@@ -62,24 +74,28 @@ trait GeneReader {
     )
   }
 
+  //REVIEW: ?
   def getExons(gffLines: Iterable[GffLine]): Iterable[Writer[Option[GffLineTreeNode[Exon]]]] = {
     gffLines
       .filter(isExon)
       .map(gffLine => {
         GffLineTreeNode(gffLine, Exon(gffLine.start, gffLine.stop), Seq.empty)
       })
-      .map(Option.apply)
+      .map(Option.apply) //REVIEW: use Option(_)
       .map(Writer(_))
   }
 
+  //REVIEW too many arguments
   def groupByParents[A, B](
                             gffLineTreeNodes: Iterable[Writer[Option[GffLineTreeNode[A]]]],
                             getParentInfo: (GffLineTreeNode[A], GffLinesRepository) => ParentInfo,
                             toParentTreeNode: (ParentInfoFound, Seq[GffLineTreeNode[A]]) => GffLineTreeNode[B],
                             gffLinesRepository: GffLinesRepository): Iterable[Writer[Option[GffLineTreeNode[B]]]] = {
 
+    //REVIEW: Why use this type here? confusing looks like a generic
     type T = (ParentInfo, Iterable[Writer[Option[GffLineTreeNode[A]]]])
 
+    //REVIEW function is too large and should be moved to some class
     def toParentTreeNodeWriter(t: T): Writer[Option[GffLineTreeNode[B]]] =
       t match {
         case (ParentInfoNotFound(message), gffLineTreeNodeWriters) =>
@@ -95,14 +111,17 @@ trait GeneReader {
           Writer(messages, Some(toParentTreeNode(parentInfoFound, gffLineTreeNodes)))
       }
 
+    //REVIEW: The implementation (gcf, fpoa) is used in this call, make this more explicit.
     def getParentInfoOpt(w: Writer[Option[GffLineTreeNode[A]]]) =
       w.value.map(getParentInfo(_, gffLinesRepository)).getOrElse(ParentInfoNotFound("Could not find parent info, as something at a lower level went wrong..."))
 
+    //REVIEW: Are you trying to build a tree?
     gffLineTreeNodes
       .groupBy(getParentInfoOpt)
       .map(toParentTreeNodeWriter)
   }
 
+  //REVIEW: This code is too complex, try to simplify and break it up in different responsibilities.
   def getSplicings(gffLines: Iterable[GffLine], gffLinesAlt: GffLinesRepository): Iterable[Writer[Option[GffLineTreeNode[Splicing]]]] =
     groupByParents[Exon, Splicing](
       getExons(gffLines),
@@ -115,6 +134,7 @@ trait GeneReader {
       },
       gffLinesAlt)
 
+  //REVIEW: What is ggfLinesAlt used for?
   def getGenes(gffLines: Iterable[GffLine], gffLinesAlt: GffLinesRepository): Iterable[Writer[Option[GffLineTreeNode[Gene]]]] = {
     val splicings = getSplicings(gffLines, gffLinesAlt)
     groupByParents[Splicing, Gene](
@@ -135,6 +155,7 @@ trait GeneReader {
   }
 }
 
+//REVIEW: Implementation in a different file
 object GcfGeneReader extends GeneReader with Serializable {
 
   val GENE = "gene"
@@ -178,6 +199,7 @@ object GcfGeneReader extends GeneReader with Serializable {
     line.getAttribute(PARENT_ID_KEY)
 }
 
+//REVIEW: Implementation in a different file
 object FPoaeGeneReader extends GeneReader with Serializable {
 
   val GENE = "gene"
@@ -226,9 +248,18 @@ object FPoaeGeneReader extends GeneReader with Serializable {
     line.getAttribute(parentIdKey)
 }
 
+//REVIEW: Implementation in a different file
 object GeneReaders {
+
+//  REVIEW: The factory method should look like this
+//  def getReader(name:String): GeneReader = {
+//    case "gcf" => GcfGeneReader
+//    case "fpoae" => FPoaeGeneReader
+//  }
+
+  //REVIEW: this can be a function, no need for a map.
   val geneReadersById: Map[String, Iterable[GffLine] => Array[Gene]] = Map(
-    "gcf" -> (gffLines => {
+    "gcf" -> (gffLines => { //REVIEW: Repeating code, use the interface in the caller not in the 'factory-method'
       val gffLineTreeNodeWriters = GcfGeneReader.getGenes(gffLines, GcfGeneReader.toGffLines(gffLines))
 
       val genes = gffLineTreeNodeWriters.flatMap { gffLineTreeNodeWriter =>
@@ -237,7 +268,7 @@ object GeneReaders {
 
       genes.toArray
     }),
-    "fpoae" -> (gffLines => {
+    "fpoae" -> (gffLines => { //REVIEWL
       val gffLineTreeNodeWriters = FPoaeGeneReader.getGenes(gffLines, FPoaeGeneReader.toGffLines(gffLines))
 
       val genes = gffLineTreeNodeWriters.flatMap { gffLineTreeNodeWriter =>
