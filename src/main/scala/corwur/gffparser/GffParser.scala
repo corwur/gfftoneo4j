@@ -1,5 +1,6 @@
 package corwur.gffparser
 
+//REVIEW: Part of GffLine , either move the classes to this file or move GffLineOrHeader, GffLine and Header
 import corwur.genereader.{Forward, Reverse, Strand}
 
 import scala.util.parsing.combinator.JavaTokenParsers
@@ -14,6 +15,7 @@ object GffParser extends JavaTokenParsers {
     * @param s The line to parse
     * @return Either an error message or a successful result: a [[GffLine]] or [[Header]]
     */
+    //REVIEW: A Try[GffLineOrHeader] expresses the function better than an Either.
   def parseLineOrHeader(s: String): Either[String, GffLineOrHeader] =
     parseAll(lineOrHeader, s) match {
       case Success(result, _) => Right(result)
@@ -32,6 +34,7 @@ object GffParser extends JavaTokenParsers {
 
   def oneOrMoreNonWhitespaceRegex = "[^\\s]+".r
 
+  //REVIEW: Can be shorter: def orPeriod[A](p: Parser[A]): Parser[Option[A]] =  literal(".") ^^ (_ => None ) | p  ^^ (a => Some(a))
   def orPeriod[A](p: Parser[A]): Parser[Option[A]] = {
 
     def periodAsNone: Parser[Option[Nothing]] = literal(".") map (_ => None)
@@ -63,6 +66,7 @@ object GffParser extends JavaTokenParsers {
   def score: Parser[Option[Double]] =
     orPeriod(double) withFailureMessage "Expected a `score`"
 
+  //REVIEW: Different 'style' than elsewhere
   def strand: Parser[Option[Strand]] = {
     val plusParser = "+" ^^ (_ => Forward)
     val minusParser = "-" ^^ (_ => Reverse)
@@ -92,6 +96,7 @@ object GffParser extends JavaTokenParsers {
     rep1sep(attributeKeyValue, attributeKeyValueSeparator) <~ opt(
       attributeKeyValueSeparator) map (_.toMap)
 
+  //REVIEW: phrase(attributeKeyValues) ^^ (Right(_)) | ".*".r ^^ (Left(_))
   def attributes: Parser[Either[String, Map[String, String]]] = {
     def asLeft[A](p: Parser[A]) = p map (Left(_))
     def asRight[A](p: Parser[A]) = p map (Right(_))
@@ -127,6 +132,8 @@ sealed trait GffLineOrHeader
 
 final case class Header(value: String) extends GffLineOrHeader
 
+//REVIEW: GffParser should not reference model (Strand, (Forward and Reverse)).
+//Strand should be in a spearte file or part of GffParser.
 final case class GffLine(
                     seqname: String,
                     source: String,
