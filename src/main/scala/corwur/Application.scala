@@ -1,13 +1,14 @@
 package corwur
 
 import corwur.CommandLineParser.CommandLineArgs
-import corwur.genereader.{DnaSequence, GeneReaders}
+import corwur.genereader._
 import corwur.gffparser.{GffLine, GffLineOrHeader, GffParser}
 import corwur.neo4j.GenesToNeo4j
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 import org.neo4j.graphdb.RelationshipType
 
+import scala.io.Source
 import scala.util.{Failure, Success}
 
 /**
@@ -30,6 +31,25 @@ object Application {
       .foreach(importGffFile)
 
   private def importGffFile(params: CommandLineArgs) = {
+
+    val bufferedSource = Source.fromFile(params.file)
+    val lines = bufferedSource.getLines().toSeq.par
+    bufferedSource.close
+    val gffLines = lines.map(GffParser.parseLineOrHeader).collect { case Right(l @ GffLine(_, _, _, _, _, _, _, _, _)) => l }
+    val gffLineTree = GcaFujiGffReader.buildTree(gffLines)
+    val gffLineTreeNodesForGenes =
+      if (gffLineTree.errors.isEmpty) {
+        Right(gffLineTree.rootNodes.seq)
+      } else {
+        Left(gffLineTree.errors.seq)
+      }
+
+    val geneFromGffLineTreeNodeBuilder = new GcfFujiGeneFromGffLineTreeNodeBuilder
+    val res = for {
+      gffLineTreeNodesForGenes <- gffLineTreeNodesForGenes.right
+      genes <- geneFromGffLineTreeNodeBuilder.toGenes(gffLineTreeNodesForGenes).right
+    } yield genes
+
     try {
       // Read lines
       val lines: RDD[String] = sc.textFile(params.file)

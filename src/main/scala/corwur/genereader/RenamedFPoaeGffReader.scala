@@ -2,7 +2,7 @@ package corwur.genereader
 
 import corwur.gffparser.GffLine
 
-object FPoaeGffReader extends GenericGffReader {
+object RenamedFPoaeGffReader extends GenericGffReader {
 
   val GENE = "gene"
   val EXON = "CDS"

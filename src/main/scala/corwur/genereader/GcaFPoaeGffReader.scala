@@ -53,7 +53,7 @@ object GcaFPoaeGffReader extends GenericGffReader {
           getParentInfo(parentInfo.parent, parentFeatures, gffLinesRepository)
         }
       case None =>
-        ParentInfoNotFound(s"Could not find parent of ${gffLine} while looking for a parent.")
+        ParentInfoNotFound(s"Could not find parent of ${gffLine} while looking for a parent with features ${parentFeatures.mkString(", ")}.")
     }
 
   def getParentId(line: GffLine): Option[String] =

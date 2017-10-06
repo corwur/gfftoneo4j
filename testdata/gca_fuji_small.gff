@@ -1,0 +1,14 @@
+##gff-version 3
+#!gff-spec-version 1.21
+#!processor NCBI annotwriter
+#!genome-build Fusarium_fujikuroi_IMI58289_V2
+#!genome-build-accession NCBI_Assembly:GCA_900079805.1
+##sequence-region HF679023.1 1 6564208
+##species https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=1279085
+HF679023.1	EMBL	region	1	6564208	.	+	.	ID=id0;Dbxref=taxon:1279085;Name=FFUJ_chr01;chromosome=FFUJ_chr01;gbkey=Src;mol_type=genomic DNA;strain=IMI 58289
+HF679023.1	EMBL	gene	7187	8012	.	-	.	ID=gene0;Name=FFUJ_02088;gbkey=Gene;gene_biotype=protein_coding;locus_tag=FFUJ_02088
+HF679023.1	EMBL	CDS	7454	8012	.	-	0	ID=cds0;Parent=gene0;Dbxref=EnsemblGenomes-Gn:FFUJ_02088,EnsemblGenomes-Tr:CCT61437,GOA:S0DJH9,UniProtKB/TrEMBL:S0DJH9,NCBI_GP:CCT61437.1;Name=CCT61437.1;gbkey=CDS;product=uncharacterized protein;protein_id=CCT61437.1
+HF679023.1	EMBL	CDS	7187	7395	.	-	2	ID=cds0;Parent=gene0;Dbxref=EnsemblGenomes-Gn:FFUJ_02088,EnsemblGenomes-Tr:CCT61437,GOA:S0DJH9,UniProtKB/TrEMBL:S0DJH9,NCBI_GP:CCT61437.1;Name=CCT61437.1;gbkey=CDS;product=uncharacterized protein;protein_id=CCT61437.1
+HF679023.1	EMBL	exon	7187	7395	.	-	.	ID=id1;Parent=gene0;exon_number=2;gbkey=exon
+HF679023.1	EMBL	intron	7396	7453	.	-	.	ID=id2;exon_number=1;gbkey=intron
+HF679023.1	EMBL	exon	7454	8012	.	-	.	ID=id3;Parent=gene0;exon_number=1;gbkey=exon
