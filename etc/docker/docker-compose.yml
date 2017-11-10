@@ -1,0 +1,22 @@
+version: '3'
+services:
+  gfftoneo4j:
+    build: ./gfftoneo4j
+    environment:
+      - "NEO4J=bolt://neo4j:7687"
+    depends_on:
+      - "neo4j"
+    command: ["./wait-for-it.sh", "neo4j:7687", "--", "./demo.sh" ]
+  neo4j:
+    image: neo4j:3.3.0
+    environment:
+      - "NEO4J_AUTH=none"
+      - "NEO4J_dbms_memory_heap_maxSize=2G"
+    volumes:
+      - gfftoneo4j_db:/data
+    ports:
+      - 7474:7474
+      - 7473:7473
+      - 7687:7687
+volumes:
+  gfftoneo4j_db:
